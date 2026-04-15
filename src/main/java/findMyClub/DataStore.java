@@ -1,0 +1,300 @@
+package findMyClub;
+
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
+
+public class DataStore {
+
+    private static DataStore instance;
+
+    private final List<User> users = new ArrayList<>();
+    private final List<Club> clubs = new ArrayList<>();
+    private final List<MembershipRequest> requests = new ArrayList<>();
+
+    private int nextUserId = 1;
+    private int nextClubId = 1;
+    private int nextRequestId = 1;
+    private int nextEventId = 1;
+
+    private DataStore() {
+        seedData();
+    }
+
+    public static synchronized DataStore getInstance() {
+        if (instance == null) instance = new DataStore();
+        return instance;
+    }
+
+    private void seedData() {
+
+        users.add(new User(21, "Alice Smith", "alice.smith@sjsu.edu", "pw1", "student"));
+        users.add(new User(22, "Bob Johnson", "bob.johnson@sjsu.edu", "pw2", "student"));
+        users.add(new User(23, "Charlie Williams", "charlie.williams@sjsu.edu", "pw3", "student"));
+        users.add(new User(24, "Dana Brown", "dana.brown@sjsu.edu", "pw4", "student"));
+        users.add(new User(25, "Eve Jones", "eve.jones@sjsu.edu", "pw5", "student"));
+        users.add(new User(26, "Liam Nguyen", "liam.nguyen@sjsu.edu", "pw6", "student"));
+        users.add(new User(27, "Mia Patel", "mia.patel@sjsu.edu", "pw7", "student"));
+        users.add(new User(28, "Noah Kim", "noah.kim@sjsu.edu", "pw8", "student"));
+        users.add(new User(29, "Emma Lopez", "emma.lopez@sjsu.edu", "pw9", "student"));
+        users.add(new User(30, "Ava Chen", "ava.chen@sjsu.edu", "pw10", "student"));
+
+        users.add(new User(31, "Frank Garcia", "frank.garcia@sjsu.edu", "pw11", "clubLeader"));
+        users.add(new User(32, "Grace Miller", "grace.miller@sjsu.edu", "pw12", "clubLeader"));
+        users.add(new User(33, "Hank Davis", "hank.davis@sjsu.edu", "pw13", "clubLeader"));
+        users.add(new User(34, "Olivia Wang", "olivia.wang@sjsu.edu", "pw14", "clubLeader"));
+        users.add(new User(35, "Sophia Lee", "sophia.lee@sjsu.edu", "pw15", "clubLeader"));
+
+        users.add(new User(36, "Ivy Martinez", "ivy.martinez@sjsu.edu", "pw16", "admin"));
+        users.add(new User(37, "Jack Wilson", "jack.wilson@sjsu.edu", "pw17", "admin"));
+        users.add(new User(38, "Emily Scott", "emily.scott@sjsu.edu", "pw18", "admin"));
+        users.add(new User(39, "Daniel Green", "daniel.green@sjsu.edu", "pw19", "admin"));
+        users.add(new User(40, "Charlotte Young", "charlotte.young@sjsu.edu", "pw20", "admin"));
+
+        nextUserId = 41;
+
+        Club chess = new Club(21, "Chess Club",
+                "A club for chess enthusiasts",
+                "Games", "Library, Basement Floor", "Fridays 5 PM", "Discord", 31);
+        chess.setStatus("approved");
+        chess.getKeywords().addAll(Arrays.asList("chess", "strategy", "games", "board"));
+        chess.getMemberIds().add(31);
+        chess.getEvents().add(new ClubEvent(nextEventId++, "Weekly Tournament",
+                "Open to all skill levels, prizes for top 3!", "Library Basement Floor",
+                LocalDateTime.now().plusDays(5), 21));
+        clubs.add(chess);
+
+        Club photo = new Club(22, "Photography Club",
+                "Explore photography techniques",
+                "Arts", "IS 219", "Wednesdays 3 PM", "Instagram Group", 32);
+        photo.setStatus("approved");
+        photo.getKeywords().addAll(Arrays.asList("photography", "art", "camera", "creative"));
+        photo.getMemberIds().add(32);
+        clubs.add(photo);
+
+        Club robotics = new Club(23, "Robotics Club",
+                "Build and program robots",
+                "Technology", "ENGR 325", "Tuesdays 4 PM", "Slack", 33);
+        robotics.setStatus("pending");
+        robotics.getKeywords().addAll(Arrays.asList("robotics", "engineering", "programming", "build"));
+        robotics.getMemberIds().add(33);
+        clubs.add(robotics);
+
+        Club fencing = new Club(24, "Fencing Club",
+                "Recreational Fencing",
+                "Sports", "Event Center", "Tuesdays 4 PM", "Discord", 34);
+        fencing.setStatus("approved");
+        fencing.getKeywords().addAll(Arrays.asList("fencing", "sports", "martial", "recreation"));
+        fencing.getMemberIds().add(34);
+        clubs.add(fencing);
+
+        Club dnd = new Club(25, "DnD Club",
+                "A club to play DnD",
+                "Games", "Online", "TBD", "Discord", 32);
+        dnd.setStatus("approved");
+        dnd.getKeywords().addAll(Arrays.asList("dnd", "dungeons", "dragons", "roleplay", "tabletop"));
+        dnd.getMemberIds().add(32);
+        clubs.add(dnd);
+
+        Club debate = new Club(26, "Debate Club",
+                "Develop debating skills",
+                "Academic", "SH 425", "Fridays 4 PM", "Discord", 33);
+        debate.setStatus("rejected");
+        debate.setRejectionReason("Missing faculty advisor information.");
+        debate.getKeywords().addAll(Arrays.asList("debate", "speech", "academic", "argumentation"));
+        debate.getMemberIds().add(33);
+        clubs.add(debate);
+
+        Club music = new Club(27, "Music Club",
+                "Practice and perform music",
+                "Performing Arts", "MUS 106", "Wednesdays 5 PM", "Discord", 34);
+        music.setStatus("approved");
+        music.getKeywords().addAll(Arrays.asList("music", "performance", "instruments", "arts"));
+        music.getMemberIds().add(34);
+        music.getEvents().add(new ClubEvent(nextEventId++, "Spring Concert",
+                "End of semester performance open to all students!", "MUS 106",
+                LocalDateTime.now().plusDays(14), 27));
+        clubs.add(music);
+
+        Club science = new Club(28, "Science Club",
+                "Explore scientific topics",
+                "Academic", "ENGR 320", "Thursdays 3 PM", "Slack", 35);
+        science.setStatus("approved");
+        science.getKeywords().addAll(Arrays.asList("science", "research", "experiments", "academic"));
+        science.getMemberIds().add(35);
+        clubs.add(science);
+
+        Club literature = new Club(29, "Literature Club",
+                "Discuss books and writing",
+                "Arts", "SH 102", "Mondays 3 PM", "Discord", 31);
+        literature.setStatus("approved");
+        literature.getKeywords().addAll(Arrays.asList("books", "writing", "literature", "reading"));
+        literature.getMemberIds().add(31);
+        clubs.add(literature);
+
+        Club gaming = new Club(30, "Gaming Club",
+                "Video game tournaments",
+                "Games", "Online", "Saturdays 1 PM", "Discord", 35);
+        gaming.setStatus("pending");
+        gaming.getKeywords().addAll(Arrays.asList("gaming", "videogames", "esports", "tournaments"));
+        gaming.getMemberIds().add(35);
+        clubs.add(gaming);
+
+        nextClubId = 31;
+        nextEventId = 10;
+    }
+
+    public synchronized User registerUser(String name, String email, String password, String role) {
+        boolean exists = users.stream().anyMatch(u -> u.getEmail().equalsIgnoreCase(email));
+        if (exists) return null;
+        User u = new User(nextUserId++, name, email, password, role);
+        users.add(u);
+        return u;
+    }
+
+    public User loginUser(String email, String password) {
+        return users.stream()
+                .filter(u -> u.getEmail().equalsIgnoreCase(email)
+                        && u.getPassword().equals(password))
+                .findFirst().orElse(null);
+    }
+
+    public User getUserById(int id) {
+        return users.stream()
+                .filter(u -> u.getId() == id)
+                .findFirst().orElse(null);
+    }
+
+    public List<User> getAllUsers() {
+        return users;
+    }
+
+    public List<Club> searchClubs(String query, String category, String sortBy) {
+        List<Club> result = clubs.stream()
+                .filter(c -> "approved".equals(c.getStatus()))
+                .collect(Collectors.toList());
+
+        if (query != null && !query.trim().isEmpty()) {
+            String q = query.toLowerCase();
+            result = result.stream().filter(c ->
+                    c.getName().toLowerCase().contains(q) ||
+                            c.getDescription().toLowerCase().contains(q) ||
+                            c.getCategory().toLowerCase().contains(q) ||
+                            c.getKeywords().stream().anyMatch(k -> k.toLowerCase().contains(q))
+            ).collect(Collectors.toList());
+        }
+
+        if (category != null && !category.isEmpty() && !"All".equals(category)) {
+            result = result.stream()
+                    .filter(c -> c.getCategory().equals(category))
+                    .collect(Collectors.toList());
+        }
+
+        if ("size".equals(sortBy)) {
+            result.sort((a, b) -> b.getMemberCount() - a.getMemberCount());
+        } else {
+            result.sort(Comparator.comparing(Club::getName));
+        }
+
+        return result;
+    }
+
+    public Club getClubById(int id) {
+        return clubs.stream()
+                .filter(c -> c.getId() == id)
+                .findFirst().orElse(null);
+    }
+
+    public synchronized Club createClub(String name, String description, String category,
+                                        String location, String time, String comm, int leaderId) {
+        Club c = new Club(nextClubId++, name, description, category, location, time, comm, leaderId);
+        c.setStatus("pending");
+        c.getMemberIds().add(leaderId);
+        clubs.add(c);
+        return c;
+    }
+
+    public List<Club> getClubsByLeader(int leaderId) {
+        return clubs.stream()
+                .filter(c -> c.getLeaderId() == leaderId)
+                .collect(Collectors.toList());
+    }
+
+    public List<Club> getAllApprovedClubs() {
+        return clubs.stream()
+                .filter(c -> "approved".equals(c.getStatus()))
+                .collect(Collectors.toList());
+    }
+
+    public List<Club> getAllClubs() {
+        return clubs;
+    }
+
+    public List<String> getCategories() {
+        return Arrays.asList(
+                "Academic", "Arts", "Games", "Performing Arts", "Sports", "Technology", "Other"
+        );
+    }
+
+    public synchronized MembershipRequest submitRequest(int studentId, int clubId) {
+        boolean already = requests.stream().anyMatch(r ->
+                r.getStudentId() == studentId &&
+                        r.getClubId() == clubId &&
+                        "pending".equals(r.getStatus()));
+        if (already) return null;
+        MembershipRequest r = new MembershipRequest(nextRequestId++, studentId, clubId);
+        requests.add(r);
+        return r;
+    }
+
+    public List<MembershipRequest> getRequestsByStudent(int studentId) {
+        return requests.stream()
+                .filter(r -> r.getStudentId() == studentId)
+                .collect(Collectors.toList());
+    }
+
+    public List<MembershipRequest> getPendingRequestsForClub(int clubId) {
+        return requests.stream()
+                .filter(r -> r.getClubId() == clubId && "pending".equals(r.getStatus()))
+                .collect(Collectors.toList());
+    }
+
+    public List<MembershipRequest> getAllRequestsForClub(int clubId) {
+        return requests.stream()
+                .filter(r -> r.getClubId() == clubId)
+                .collect(Collectors.toList());
+    }
+
+    public boolean cancelRequest(int requestId, int studentId) {
+        for (MembershipRequest r : requests) {
+            if (r.getId() == requestId &&
+                    r.getStudentId() == studentId &&
+                    "pending".equals(r.getStatus())) {
+                r.setStatus("cancelled");
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean processRequest(int requestId, String decision, int leaderId) {
+        for (MembershipRequest r : requests) {
+            if (r.getId() == requestId && "pending".equals(r.getStatus())) {
+                Club club = getClubById(r.getClubId());
+                if (club != null && club.getLeaderId() == leaderId) {
+                    r.setStatus(decision);
+                    r.setResponseDate(LocalDateTime.now());
+                    if ("approved".equals(decision)) {
+                        club.getMemberIds().add(r.getStudentId());
+                    }
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public List<MembershipRequest> getAllRequests() {
+        return requests;
+    }
+}
