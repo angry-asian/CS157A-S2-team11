@@ -417,6 +417,16 @@ public class DataStore {
         return null;
     }
 
+    /** Find the Club that owns the given event id, or null. */
+    public Club getClubForEvent(int eventId) {
+        for (Club c : clubs) {
+            for (ClubEvent e : c.getEvents()) {
+                if (e.getId() == eventId) return c;
+            }
+        }
+        return null;
+    }
+
     /** All events across all approved clubs. */
     public List<ClubEvent> getAllEvents() {
         List<ClubEvent> all = new ArrayList<>();
@@ -426,6 +436,135 @@ public class DataStore {
             }
         }
         all.sort(Comparator.comparing(ClubEvent::getEventDate));
+        return all;
+    }
+
+    /** All events for a single club, sorted by date. */
+    public List<ClubEvent> getEventsByClub(int clubId) {
+        Club c = getClubById(clubId);
+        if (c == null) return new ArrayList<>();
+        List<ClubEvent> list = new ArrayList<>(c.getEvents());
+        list.sort(Comparator.comparing(ClubEvent::getEventDate));
+        return list;
+    }
+
+    /** All events across every club led by the given user, sorted by date. */
+    public List<ClubEvent> getEventsByLeader(int leaderId) {
+        List<ClubEvent> all = new ArrayList<>();
+        for (Club c : clubs) {
+            if (c.getLeaderId() == leaderId) {
+                all.addAll(c.getEvents());
+            }
+        }
+        all.sort(Comparator.comparing(ClubEvent::getEventDate));
+        return all;
+    }
+
+    /** Create an event under a club. Caller must be the club's leader. */
+    public synchronized ClubEvent createEvent(int clubId, int leaderId,
+                                              String title, String description,
+                                              String location, LocalDateTime eventDate) {
+        if (title == null || title.trim().isEmpty()) return null;
+        if (eventDate == null) return null;
+
+        Club c = getClubById(clubId);
+        if (c == null || c.getLeaderId() != leaderId) return null;
+
+        ClubEvent e = new ClubEvent(nextEventId++,
+                title.trim(),
+                description == null ? "" : description.trim(),
+                location == null ? "" : location.trim(),
+                eventDate,
+                clubId);
+        c.getEvents().add(e);
+        return e;
+    }
+
+    /** Update an event. Caller must be the parent club's leader. */
+    public synchronized boolean updateEvent(int eventId, int leaderId,
+                                            String title, String description,
+                                            String location, LocalDateTime eventDate) {
+        Club c = getClubForEvent(eventId);
+        if (c == null || c.getLeaderId() != leaderId) return false;
+
+        ClubEvent e = getEventById(eventId);
+        if (e == null) return false;
+
+        if (title != null && !title.trim().isEmpty()) e.setTitle(title.trim());
+        e.setDescription(description == null ? "" : description.trim());
+        e.setLocation(location == null ? "" : location.trim());
+        if (eventDate != null) e.setEventDate(eventDate);
+        return true;
+    }
+
+    /** Delete an event. Caller must be the parent club's leader. Also drops saved-event refs. */
+    public synchronized boolean deleteEvent(int eventId, int leaderId) {
+        Club c = getClubForEvent(eventId);
+        if (c == null || c.getLeaderId() != leaderId) return false;
+
+        boolean removed = c.getEvents().removeIf(e -> e.getId() == eventId);
+        if (removed) {
+            savedEvents.removeIf(s -> s.getEventId() == eventId);
+        }
+        return removed;
+    }
+
+    /** Returns true if the club already has an event within 60 minutes of the candidate.
+     *  ignoreEventId allows skipping a specific event id (used when updating). */
+    public boolean hasEventConflict(int clubId, LocalDateTime when, Integer ignoreEventId) {
+        if (when == null) return false;
+        Club c = getClubById(clubId);
+        if (c == null) return false;
+        for (ClubEvent e : c.getEvents()) {
+            if (ignoreEventId != null && e.getId() == ignoreEventId.intValue()) continue;
+            long minutes = Math.abs(java.time.Duration.between(e.getEventDate(), when).toMinutes());
+            if (minutes < 60) return true;
+        }
+        return false;
+    }
+
+    /** Members of a club as full User objects. */
+    public List<User> getMembersByClub(int clubId) {
+        Club c = getClubById(clubId);
+        if (c == null) return new ArrayList<>();
+        List<User> list = new ArrayList<>();
+        for (Integer id : c.getMemberIds()) {
+            User u = getUserById(id);
+            if (u != null) list.add(u);
+        }
+        return list;
+    }
+
+    /** Remove a member from a club. Caller must be the club's leader.
+     *  The leader cannot remove themselves through this path. */
+    public synchronized boolean removeMember(int clubId, int userId, int leaderId) {
+        Club c = getClubById(clubId);
+        if (c == null || c.getLeaderId() != leaderId) return false;
+        if (userId == leaderId) return false; // can't remove the leader
+        return c.getMemberIds().removeIf(id -> id == userId);
+    }
+
+    /** All other users with the clubLeader role (excluding the current user). */
+    public List<User> getOtherClubLeaders(int excludeUserId) {
+        return users.stream()
+                .filter(u -> "clubLeader".equals(u.getRole()) && u.getId() != excludeUserId)
+                .sorted(Comparator.comparing(User::getName))
+                .collect(Collectors.toList());
+    }
+
+    /** Non-pending request history for all clubs led by the given leader. */
+    public List<MembershipRequest> getRequestHistoryByLeader(int leaderId) {
+        List<MembershipRequest> all = new ArrayList<>();
+        for (Club c : getClubsByLeader(leaderId)) {
+            for (MembershipRequest r : getAllRequestsForClub(c.getId())) {
+                if (!"pending".equals(r.getStatus())) all.add(r);
+            }
+        }
+        all.sort((a, b) -> {
+            LocalDateTime da = a.getResponseDate() != null ? a.getResponseDate() : a.getRequestDate();
+            LocalDateTime db = b.getResponseDate() != null ? b.getResponseDate() : b.getRequestDate();
+            return db.compareTo(da); // newest first
+        });
         return all;
     }
 }

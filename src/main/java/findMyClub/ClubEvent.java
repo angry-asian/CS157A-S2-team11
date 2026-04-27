@@ -45,9 +45,32 @@ public class ClubEvent {
         return clubId;
     }
 
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public void setLocation(String location) {
+        this.location = location;
+    }
+
+    public void setEventDate(LocalDateTime eventDate) {
+        this.eventDate = eventDate;
+    }
+
     public String getFormattedDate() {
         DateTimeFormatter formatter =
                 DateTimeFormatter.ofPattern("MMM d, yyyy 'at' h:mm a");
+        return eventDate.format(formatter);
+    }
+
+    /** Value formatted for an HTML5 <input type="datetime-local"> field. */
+    public String getInputDate() {
+        DateTimeFormatter formatter =
+                DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm");
         return eventDate.format(formatter);
     }
 }

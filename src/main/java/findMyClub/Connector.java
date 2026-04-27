@@ -4,6 +4,8 @@ import javax.servlet.*;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.*;
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 
 @SuppressWarnings("serial")
@@ -147,6 +149,26 @@ public class Connector extends HttpServlet {
                 handleUnsaveEvent(req, resp);
                 break;
 
+            case "/createEvent":
+                if (!checkLogin(req, resp)) return;
+                handleCreateEvent(req, resp);
+                break;
+
+            case "/updateEvent":
+                if (!checkLogin(req, resp)) return;
+                handleUpdateEvent(req, resp);
+                break;
+
+            case "/deleteEvent":
+                if (!checkLogin(req, resp)) return;
+                handleDeleteEvent(req, resp);
+                break;
+
+            case "/removeMember":
+                if (!checkLogin(req, resp)) return;
+                handleRemoveMember(req, resp);
+                break;
+
             default:
                 resp.sendRedirect(req.getContextPath() + "/app/search");
         }
@@ -253,6 +275,20 @@ public class Connector extends HttpServlet {
         req.setAttribute("myClubs", myClubs);
         req.setAttribute("categories", ds.getCategories());
 
+        // For each club, attach its non-leader member roster as a paired list-of-maps.
+        List<Map<String, Object>> myClubsWithMembers = new ArrayList<>();
+        for (Club c : myClubs) {
+            List<User> members = new ArrayList<>();
+            for (User u : ds.getMembersByClub(c.getId())) {
+                if (u.getId() != c.getLeaderId()) members.add(u);
+            }
+            Map<String, Object> entry = new HashMap<>();
+            entry.put("club", c);
+            entry.put("members", members);
+            myClubsWithMembers.add(entry);
+        }
+        req.setAttribute("myClubsWithMembers", myClubsWithMembers);
+
         List<Map<String, Object>> pending = new ArrayList<>();
         for (Club c : myClubs) {
             for (MembershipRequest r : ds.getPendingRequestsForClub(c.getId())) {
@@ -265,6 +301,37 @@ public class Connector extends HttpServlet {
         }
 
         req.setAttribute("pendingRequests", pending);
+
+        List<Map<String, Object>> myEvents = new ArrayList<>();
+        for (Club c : myClubs) {
+            for (ClubEvent e : c.getEvents()) {
+                Map<String, Object> m = new HashMap<>();
+                m.put("event", e);
+                m.put("club", c);
+                myEvents.add(m);
+            }
+        }
+        myEvents.sort((a, b) -> {
+            ClubEvent ea = (ClubEvent) a.get("event");
+            ClubEvent eb = (ClubEvent) b.get("event");
+            return ea.getEventDate().compareTo(eb.getEventDate());
+        });
+        req.setAttribute("myEvents", myEvents);
+
+
+        // Past requests (approved/rejected/cancelled) across the leader's clubs
+        List<Map<String, Object>> pastRequests = new ArrayList<>();
+        for (MembershipRequest r : ds.getRequestHistoryByLeader(userId)) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("request", r);
+            m.put("student", ds.getUserById(r.getStudentId()));
+            m.put("club", ds.getClubById(r.getClubId()));
+            pastRequests.add(m);
+        }
+        req.setAttribute("pastRequests", pastRequests);
+
+        // Other club leaders (contact list)
+        req.setAttribute("otherLeaders", ds.getOtherClubLeaders(userId));
 
         String msg = req.getParameter("msg");
         if (msg != null) req.setAttribute("flashMsg", msg);
@@ -575,5 +642,107 @@ public class Connector extends HttpServlet {
 
         ds.unsaveEvent(userId, eventId);
         resp.sendRedirect(req.getContextPath() + "/app/savedEvents?msg=removed");
+    }
+
+    private void handleCreateEvent(HttpServletRequest req, HttpServletResponse resp)
+            throws IOException {
+
+        int userId = (int) req.getSession().getAttribute("userId");
+
+        int clubId;
+        LocalDateTime when;
+        try {
+            clubId = Integer.parseInt(req.getParameter("clubId"));
+            when   = LocalDateTime.parse(req.getParameter("eventDate"));
+        } catch (NumberFormatException | DateTimeParseException | NullPointerException ex) {
+            resp.sendRedirect(req.getContextPath() + "/app/clubLeaderDashboard?msg=eventBadInput");
+            return;
+        }
+
+        if (ds.hasEventConflict(clubId, when, null)) {
+            resp.sendRedirect(req.getContextPath() + "/app/clubLeaderDashboard?msg=eventConflict");
+            return;
+        }
+
+        ClubEvent created = ds.createEvent(
+                clubId, userId,
+                req.getParameter("title"),
+                req.getParameter("description"),
+                req.getParameter("location"),
+                when
+        );
+
+        String msg = (created == null) ? "eventDenied" : "eventCreated";
+        resp.sendRedirect(req.getContextPath() + "/app/clubLeaderDashboard?msg=" + msg);
+    }
+
+    private void handleUpdateEvent(HttpServletRequest req, HttpServletResponse resp)
+            throws IOException {
+
+        int userId = (int) req.getSession().getAttribute("userId");
+
+        int eventId;
+        LocalDateTime when;
+        try {
+            eventId = Integer.parseInt(req.getParameter("eventId"));
+            when    = LocalDateTime.parse(req.getParameter("eventDate"));
+        } catch (NumberFormatException | DateTimeParseException | NullPointerException ex) {
+            resp.sendRedirect(req.getContextPath() + "/app/clubLeaderDashboard?msg=eventBadInput");
+            return;
+        }
+
+        Club ownerClub = ds.getClubForEvent(eventId);
+        if (ownerClub != null && ds.hasEventConflict(ownerClub.getId(), when, eventId)) {
+            resp.sendRedirect(req.getContextPath() + "/app/clubLeaderDashboard?msg=eventConflict");
+            return;
+        }
+
+        boolean ok = ds.updateEvent(
+                eventId, userId,
+                req.getParameter("title"),
+                req.getParameter("description"),
+                req.getParameter("location"),
+                when
+        );
+
+        String msg = ok ? "eventUpdated" : "eventDenied";
+        resp.sendRedirect(req.getContextPath() + "/app/clubLeaderDashboard?msg=" + msg);
+    }
+
+    private void handleDeleteEvent(HttpServletRequest req, HttpServletResponse resp)
+            throws IOException {
+
+        int userId = (int) req.getSession().getAttribute("userId");
+
+        int eventId;
+        try {
+            eventId = Integer.parseInt(req.getParameter("eventId"));
+        } catch (NumberFormatException | NullPointerException ex) {
+            resp.sendRedirect(req.getContextPath() + "/app/clubLeaderDashboard?msg=eventBadInput");
+            return;
+        }
+
+        boolean ok = ds.deleteEvent(eventId, userId);
+        String msg = ok ? "eventDeleted" : "eventDenied";
+        resp.sendRedirect(req.getContextPath() + "/app/clubLeaderDashboard?msg=" + msg);
+    }
+
+    private void handleRemoveMember(HttpServletRequest req, HttpServletResponse resp)
+            throws IOException {
+
+        int leaderId = (int) req.getSession().getAttribute("userId");
+
+        int clubId, memberId;
+        try {
+            clubId   = Integer.parseInt(req.getParameter("clubId"));
+            memberId = Integer.parseInt(req.getParameter("memberId"));
+        } catch (NumberFormatException | NullPointerException ex) {
+            resp.sendRedirect(req.getContextPath() + "/app/clubLeaderDashboard?msg=memberBadInput");
+            return;
+        }
+
+        boolean ok = ds.removeMember(clubId, memberId, leaderId);
+        String msg = ok ? "memberRemoved" : "memberDenied";
+        resp.sendRedirect(req.getContextPath() + "/app/clubLeaderDashboard?msg=" + msg);
     }
 }
