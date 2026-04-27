@@ -57,6 +57,25 @@ public class Connector extends HttpServlet {
                 handleClubLeaderDashboard(req, resp);
                 break;
 
+            case "/adminDashboard":
+                if (!checkLogin(req, resp)) return;
+                if (!"admin".equals(req.getSession().getAttribute("userRole"))) {
+                    resp.sendRedirect(req.getContextPath() + "/app/search");
+                    return;
+                }
+                handleAdminDashboard(req, resp);
+                break;
+
+            case "/messages":
+                if (!checkLogin(req, resp)) return;
+                handleMessages(req, resp);
+                break;
+
+            case "/savedEvents":
+                if (!checkLogin(req, resp)) return;
+                handleSavedEvents(req, resp);
+                break;
+
             default:
                 resp.sendRedirect(req.getContextPath() + "/app/search");
         }
@@ -96,6 +115,36 @@ public class Connector extends HttpServlet {
 
             case "/processRequest":
                 handleProcessRequest(req, resp);
+                break;
+
+            case "/approveClub":
+                if (!checkLogin(req, resp)) return;
+                handleApproveClub(req, resp);
+                break;
+
+            case "/rejectClub":
+                if (!checkLogin(req, resp)) return;
+                handleRejectClub(req, resp);
+                break;
+
+            case "/updateUserRole":
+                if (!checkLogin(req, resp)) return;
+                handleUpdateUserRole(req, resp);
+                break;
+
+            case "/sendMessage":
+                if (!checkLogin(req, resp)) return;
+                handleSendMessage(req, resp);
+                break;
+
+            case "/saveEvent":
+                if (!checkLogin(req, resp)) return;
+                handleSaveEvent(req, resp);
+                break;
+
+            case "/unsaveEvent":
+                if (!checkLogin(req, resp)) return;
+                handleUnsaveEvent(req, resp);
                 break;
 
             default:
@@ -248,7 +297,7 @@ public class Connector extends HttpServlet {
                 break;
 
             case "admin":
-                resp.sendRedirect(req.getContextPath() + "/app/search");
+                resp.sendRedirect(req.getContextPath() + "/app/adminDashboard");
                 break;
 
             default:
@@ -391,5 +440,140 @@ public class Connector extends HttpServlet {
         ds.processRequest(requestId, decision, userId);
 
         resp.sendRedirect(req.getContextPath() + "/app/clubLeaderDashboard?msg=" + decision);
+    }
+
+    private void handleAdminDashboard(HttpServletRequest req, HttpServletResponse resp)
+            throws ServletException, IOException {
+
+        req.setAttribute("pendingClubs",   ds.getPendingClubs());
+        req.setAttribute("allUsers",       ds.getAllUsers());
+        req.setAttribute("allRequests",    ds.getAllRequests());
+        req.setAttribute("allEvents",      ds.getAllEvents());
+        req.setAttribute("allMessages",    ds.getAllMessages());
+        req.setAttribute("allClubs",       ds.getAllClubs());
+
+        String msg = req.getParameter("msg");
+        if (msg != null) req.setAttribute("flashMsg", msg);
+
+        forward(req, resp, "/adminDashboard.jsp");
+    }
+
+    private void handleApproveClub(HttpServletRequest req, HttpServletResponse resp)
+            throws IOException {
+
+        int clubId = Integer.parseInt(req.getParameter("clubId"));
+        ds.approveClub(clubId);
+        resp.sendRedirect(req.getContextPath() + "/app/adminDashboard?msg=approved");
+    }
+
+    private void handleRejectClub(HttpServletRequest req, HttpServletResponse resp)
+            throws IOException {
+
+        int clubId = Integer.parseInt(req.getParameter("clubId"));
+        String reason = req.getParameter("reason");
+        if (reason == null || reason.trim().isEmpty()) reason = "Does not meet campus policies.";
+        ds.rejectClub(clubId, reason.trim());
+        resp.sendRedirect(req.getContextPath() + "/app/adminDashboard?msg=rejected");
+    }
+
+    private void handleUpdateUserRole(HttpServletRequest req, HttpServletResponse resp)
+            throws IOException {
+
+        int userId = Integer.parseInt(req.getParameter("userId"));
+        String newRole = req.getParameter("newRole");
+        ds.updateUserRole(userId, newRole);
+        resp.sendRedirect(req.getContextPath() + "/app/adminDashboard?msg=roleUpdated");
+    }
+
+    private void handleMessages(HttpServletRequest req, HttpServletResponse resp)
+            throws ServletException, IOException {
+
+        int userId = (int) req.getSession().getAttribute("userId");
+
+        List<Integer> partnerIds = ds.getConversationPartners(userId);
+        List<Map<String, Object>> conversations = new ArrayList<>();
+        for (int pid : partnerIds) {
+            User partner = ds.getUserById(pid);
+            if (partner == null) continue;
+            List<Message> thread = ds.getConversation(userId, pid);
+            Map<String, Object> conv = new HashMap<>();
+            conv.put("partner", partner);
+            conv.put("messages", thread);
+            conv.put("lastMessage", thread.isEmpty() ? null : thread.get(thread.size() - 1));
+            conversations.add(conv);
+        }
+
+        String partnerIdStr = req.getParameter("with");
+        if (partnerIdStr != null) {
+            int partnerId = Integer.parseInt(partnerIdStr);
+            ds.markConversationRead(userId, partnerId);
+            req.setAttribute("activePartnerId", partnerId);
+            req.setAttribute("activeThread", ds.getConversation(userId, partnerId));
+            req.setAttribute("activePartner", ds.getUserById(partnerId));
+        }
+
+        req.setAttribute("conversations", conversations);
+        req.setAttribute("allUsers", ds.getAllUsers());
+        req.setAttribute("unreadCount", ds.getUnreadCount(userId));
+        forward(req, resp, "/messages.jsp");
+    }
+
+    private void handleSendMessage(HttpServletRequest req, HttpServletResponse resp)
+            throws IOException {
+
+        int senderId = (int) req.getSession().getAttribute("userId");
+        int receiverId = Integer.parseInt(req.getParameter("receiverId"));
+        String content = req.getParameter("content");
+
+        ds.sendMessage(senderId, receiverId, content);
+        resp.sendRedirect(req.getContextPath() + "/app/messages?with=" + receiverId);
+    }
+
+    private void handleSavedEvents(HttpServletRequest req, HttpServletResponse resp)
+            throws ServletException, IOException {
+
+        int userId = (int) req.getSession().getAttribute("userId");
+        List<SavedEvent> saved = ds.getSavedEventsForUser(userId);
+
+        List<Map<String, Object>> enriched = new ArrayList<>();
+        for (SavedEvent se : saved) {
+            ClubEvent event = ds.getEventById(se.getEventId());
+            Club club = ds.getClubById(se.getClubId());
+            if (event == null || club == null) continue;
+            Map<String, Object> m = new HashMap<>();
+            m.put("savedEvent", se);
+            m.put("event", event);
+            m.put("club", club);
+            enriched.add(m);
+        }
+
+        req.setAttribute("savedItems", enriched);
+        req.setAttribute("allEvents", ds.getAllEvents());
+
+        String msg = req.getParameter("msg");
+        if (msg != null) req.setAttribute("flashMsg", msg);
+
+        forward(req, resp, "/savedEvents.jsp");
+    }
+
+    private void handleSaveEvent(HttpServletRequest req, HttpServletResponse resp)
+            throws IOException {
+
+        int userId = (int) req.getSession().getAttribute("userId");
+        int eventId = Integer.parseInt(req.getParameter("eventId"));
+        int clubId  = Integer.parseInt(req.getParameter("clubId"));
+
+        ds.saveEvent(userId, eventId, clubId);
+        resp.sendRedirect(req.getContextPath() + "/app/savedEvents?msg=saved");
+    }
+
+    private void handleUnsaveEvent(HttpServletRequest req, HttpServletResponse resp)
+            throws IOException {
+
+        int userId  = (int) req.getSession().getAttribute("userId");
+        int eventId = Integer.parseInt(req.getParameter("eventId"));
+
+        ds.unsaveEvent(userId, eventId);
+        resp.sendRedirect(req.getContextPath() + "/app/savedEvents?msg=removed");
     }
 }

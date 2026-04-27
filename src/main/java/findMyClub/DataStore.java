@@ -11,11 +11,15 @@ public class DataStore {
     private final List<User> users = new ArrayList<>();
     private final List<Club> clubs = new ArrayList<>();
     private final List<MembershipRequest> requests = new ArrayList<>();
+    private final List<Message> messages = new ArrayList<>();
+    private final List<SavedEvent> savedEvents = new ArrayList<>();
 
     private int nextUserId = 1;
     private int nextClubId = 1;
     private int nextRequestId = 1;
     private int nextEventId = 1;
+    private int nextMessageId = 1;
+    private int nextSavedEventId = 1;
 
     private DataStore() {
         seedData();
@@ -142,6 +146,14 @@ public class DataStore {
 
         nextClubId = 31;
         nextEventId = 10;
+
+        messages.add(new Message(nextMessageId++, 21, 31, "Hi! I want to join the Chess Club."));
+        messages.add(new Message(nextMessageId++, 31, 21, "Welcome! Please submit a membership request."));
+        messages.add(new Message(nextMessageId++, 22, 32, "When is the Photography Club meeting?"));
+        messages.add(new Message(nextMessageId++, 32, 22, "Every Wednesday at 3 PM in IS 219."));
+        messages.add(new Message(nextMessageId++, 23, 33, "Can I help with the Robotics build session?"));
+        messages.add(new Message(nextMessageId++, 24, 34, "Is the Fencing Club open for new members?"));
+        messages.add(new Message(nextMessageId++, 25, 35, "How do I join the D&D Club online?"));
     }
 
     public synchronized User registerUser(String name, String email, String password, String role) {
@@ -296,5 +308,124 @@ public class DataStore {
 
     public List<MembershipRequest> getAllRequests() {
         return requests;
+    }
+
+    public List<Club> getPendingClubs() {
+        return clubs.stream()
+                .filter(c -> "pending".equals(c.getStatus()))
+                .collect(Collectors.toList());
+    }
+
+    public boolean approveClub(int clubId) {
+        Club c = getClubById(clubId);
+        if (c != null && "pending".equals(c.getStatus())) {
+            c.setStatus("approved");
+            return true;
+        }
+        return false;
+    }
+
+    public boolean rejectClub(int clubId, String reason) {
+        Club c = getClubById(clubId);
+        if (c != null && "pending".equals(c.getStatus())) {
+            c.setStatus("rejected");
+            c.setRejectionReason(reason);
+            return true;
+        }
+        return false;
+    }
+
+    public boolean updateUserRole(int userId, String newRole) {
+        User u = getUserById(userId);
+        if (u != null) {
+            u.setRole(newRole);
+            return true;
+        }
+        return false;
+    }
+
+    public synchronized Message sendMessage(int senderId, int receiverId, String content) {
+        if (content == null || content.trim().isEmpty()) return null;
+        Message m = new Message(nextMessageId++, senderId, receiverId, content.trim());
+        messages.add(m);
+        return m;
+    }
+
+    /** All conversations for a user: grouped by the other party. */
+    public List<Integer> getConversationPartners(int userId) {
+        Set<Integer> partners = new LinkedHashSet<>();
+        for (Message m : messages) {
+            if (m.getSenderId() == userId)   partners.add(m.getReceiverId());
+            if (m.getReceiverId() == userId) partners.add(m.getSenderId());
+        }
+        return new ArrayList<>(partners);
+    }
+
+    public List<Message> getConversation(int userId, int partnerId) {
+        return messages.stream()
+                .filter(m -> (m.getSenderId() == userId   && m.getReceiverId() == partnerId)
+                          || (m.getSenderId() == partnerId && m.getReceiverId() == userId))
+                .sorted(Comparator.comparing(Message::getSentAt))
+                .collect(Collectors.toList());
+    }
+
+    public int getUnreadCount(int userId) {
+        return (int) messages.stream()
+                .filter(m -> m.getReceiverId() == userId && !m.isRead())
+                .count();
+    }
+
+    public void markConversationRead(int userId, int partnerId) {
+        messages.stream()
+                .filter(m -> m.getSenderId() == partnerId && m.getReceiverId() == userId)
+                .forEach(m -> m.setRead(true));
+    }
+
+    public List<Message> getAllMessages() { return messages; }
+
+    public synchronized SavedEvent saveEvent(int userId, int eventId, int clubId) {
+        boolean already = savedEvents.stream()
+                .anyMatch(s -> s.getUserId() == userId && s.getEventId() == eventId);
+        if (already) return null;
+        SavedEvent se = new SavedEvent(nextSavedEventId++, userId, eventId, clubId);
+        savedEvents.add(se);
+        return se;
+    }
+
+    public boolean unsaveEvent(int userId, int eventId) {
+        return savedEvents.removeIf(s -> s.getUserId() == userId && s.getEventId() == eventId);
+    }
+
+    public boolean isEventSaved(int userId, int eventId) {
+        return savedEvents.stream()
+                .anyMatch(s -> s.getUserId() == userId && s.getEventId() == eventId);
+    }
+
+    public List<SavedEvent> getSavedEventsForUser(int userId) {
+        return savedEvents.stream()
+                .filter(s -> s.getUserId() == userId)
+                .collect(Collectors.toList());
+    }
+
+    /** Find a ClubEvent by its id across all clubs. */
+    public ClubEvent getEventById(int eventId) {
+        for (Club c : clubs) {
+            for (ClubEvent e : c.getEvents()) {
+                if (e.getId() == eventId) return e;
+            }
+        }
+        return null;
+    }
+
+    /** All events across all approved clubs. */
+    public List<ClubEvent> getAllEvents() {
+        List<ClubEvent> all = new ArrayList<>();
+        for (Club c : clubs) {
+            if ("approved".equals(c.getStatus())) {
+                all.addAll(c.getEvents());
+            }
+        }
+        all.sort(Comparator.comparing(ClubEvent::getEventDate));
+        return all;
     }
 }
