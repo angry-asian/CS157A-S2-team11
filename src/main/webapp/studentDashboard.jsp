@@ -1,5 +1,16 @@
 <%@ page contentType="text/html;charset=UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%
+    String role = (String) session.getAttribute("userRole");
+    if ("admin".equals(role)) {
+        response.sendRedirect(request.getContextPath() + "/app/adminDashboard");
+        return;
+    }
+    if ("clubLeader".equals(role)) {
+        response.sendRedirect(request.getContextPath() + "/app/clubLeaderDashboard");
+        return;
+    }
+%>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -13,6 +24,8 @@
     <a class="nav-brand" href="${pageContext.request.contextPath}/app/search">Find<span>My</span>Club</a>
     <div class="nav-links">
         <a href="${pageContext.request.contextPath}/app/search">Browse Clubs</a>
+        <a href="${pageContext.request.contextPath}/app/savedEvents">⭐ Saved Events</a>
+        <a href="${pageContext.request.contextPath}/app/messages">💬 Messages</a>
         <span class="nav-user">👋 ${sessionScope.userName}</span>
         <a href="${pageContext.request.contextPath}/app/logout">Log Out</a>
     </div>

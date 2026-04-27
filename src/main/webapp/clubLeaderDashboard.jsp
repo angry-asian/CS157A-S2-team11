@@ -13,6 +13,8 @@
     <a class="nav-brand" href="${pageContext.request.contextPath}/app/search">Find<span>My</span>Club</a>
     <div class="nav-links">
         <a href="${pageContext.request.contextPath}/app/search">Browse Clubs</a>
+        <a href="${pageContext.request.contextPath}/app/messages">💬 Messages</a>
+        <a href="${pageContext.request.contextPath}/app/savedEvents">⭐ Saved Events</a>
         <span class="nav-user">👋 ${sessionScope.userName}</span>
         <a href="${pageContext.request.contextPath}/app/logout">Log Out</a>
     </div>
