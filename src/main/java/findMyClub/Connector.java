@@ -169,6 +169,16 @@ public class Connector extends HttpServlet {
                 handleRemoveMember(req, resp);
                 break;
 
+            case "/addCoLeader":
+                if (!checkLogin(req, resp)) return;
+                handleAddCoLeader(req, resp);
+                break;
+
+            case "/removeCoLeader":
+                if (!checkLogin(req, resp)) return;
+                handleRemoveCoLeader(req, resp);
+                break;
+
             default:
                 resp.sendRedirect(req.getContextPath() + "/app/search");
         }
@@ -221,6 +231,7 @@ public class Connector extends HttpServlet {
 
         req.setAttribute("club", club);
         req.setAttribute("leader", ds.getUserById(club.getLeaderId()));
+        req.setAttribute("coLeaders", ds.getCoLeaders(club.getId()));
 
         HttpSession session = req.getSession(false);
         if (session != null && session.getAttribute("userId") != null) {
@@ -275,16 +286,22 @@ public class Connector extends HttpServlet {
         req.setAttribute("myClubs", myClubs);
         req.setAttribute("categories", ds.getCategories());
 
-        // For each club, attach its non-leader member roster as a paired list-of-maps.
+        // For each club, attach: the non-leader/non-coleader member roster, the
+        // co-leader User list, and the candidates to invite as new co-leaders.
         List<Map<String, Object>> myClubsWithMembers = new ArrayList<>();
         for (Club c : myClubs) {
             List<User> members = new ArrayList<>();
             for (User u : ds.getMembersByClub(c.getId())) {
-                if (u.getId() != c.getLeaderId()) members.add(u);
+                if (u.getId() == c.getLeaderId()) continue;
+                if (c.getCoLeaderIds().contains(u.getId())) continue;
+                members.add(u);
             }
             Map<String, Object> entry = new HashMap<>();
             entry.put("club", c);
             entry.put("members", members);
+            entry.put("coLeaders", ds.getCoLeaders(c.getId()));
+            entry.put("coLeaderCandidates", ds.getCoLeaderCandidates(c.getId()));
+            entry.put("isPrimary", c.getLeaderId() == userId);
             myClubsWithMembers.add(entry);
         }
         req.setAttribute("myClubsWithMembers", myClubsWithMembers);
@@ -333,6 +350,11 @@ public class Connector extends HttpServlet {
         // Other club leaders (contact list)
         req.setAttribute("otherLeaders", ds.getOtherClubLeaders(userId));
 
+        // Activity log for this leader (newest first, capped to 25)
+        List<AuditLog> activity = ds.getAuditLogsForActor(userId);
+        if (activity.size() > 25) activity = activity.subList(0, 25);
+        req.setAttribute("activityLog", activity);
+
         String msg = req.getParameter("msg");
         if (msg != null) req.setAttribute("flashMsg", msg);
 
@@ -376,16 +398,36 @@ public class Connector extends HttpServlet {
     private void handleRegister(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
 
-        String name = req.getParameter("name");
+        // Schema asks for First_Name + Last_Name. We accept both — and a legacy "name"
+        // field — for backwards compatibility with older versions of the form.
+        String firstName = req.getParameter("firstName");
+        String lastName  = req.getParameter("lastName");
+        String legacyName = req.getParameter("name");
+        if ((firstName == null || firstName.trim().isEmpty())
+                && legacyName != null && !legacyName.trim().isEmpty()) {
+            String trimmed = legacyName.trim();
+            int sp = trimmed.indexOf(' ');
+            firstName = sp < 0 ? trimmed : trimmed.substring(0, sp);
+            lastName  = sp < 0 ? ""      : trimmed.substring(sp + 1).trim();
+        }
+
         String email = req.getParameter("email");
         String password = req.getParameter("password");
         String confirm = req.getParameter("confirmPassword");
         String role = req.getParameter("role");
 
-        if (role == null) role = "student";
+        // Whitelist self-registration roles. Admins must be promoted by another admin.
+        if (role == null || (!role.equals("student") && !role.equals("clubLeader"))) {
+            role = "student";
+        }
 
-        if (name == null || name.trim().isEmpty()) {
-            req.setAttribute("error", "Full name is required.");
+        if (firstName == null || firstName.trim().isEmpty()) {
+            req.setAttribute("error", "First name is required.");
+            forward(req, resp, "/register.jsp");
+            return;
+        }
+        if (lastName == null || lastName.trim().isEmpty()) {
+            req.setAttribute("error", "Last name is required.");
             forward(req, resp, "/register.jsp");
             return;
         }
@@ -408,7 +450,7 @@ public class Connector extends HttpServlet {
             return;
         }
 
-        User user = ds.registerUser(name.trim(), email.trim(), password, role);
+        User user = ds.registerUser(firstName.trim(), lastName.trim(), email.trim(), password, role);
 
         if (user == null) {
             req.setAttribute("error", "An account with this email already exists.");
@@ -485,11 +527,26 @@ public class Connector extends HttpServlet {
 
         Club club = ds.getClubById(clubId);
 
-        if (club != null && club.getLeaderId() == userId) {
+        if (club != null && club.isManagedBy(userId)) {
+            // Name: required, ignored if blank.
+            String name = req.getParameter("name");
+            if (name != null && !name.trim().isEmpty()) {
+                club.setName(name.trim());
+            }
+
+            // Category: only accept values from the canonical list.
+            String category = req.getParameter("category");
+            if (category != null && ds.getCategories().contains(category)) {
+                club.setCategory(category);
+            }
+
             club.setDescription(req.getParameter("description"));
             club.setMeetingLocation(req.getParameter("meetingLocation"));
             club.setMeetingTime(req.getParameter("meetingTime"));
             club.setCommunicationPlatform(req.getParameter("communicationPlatform"));
+
+            ds.recordAudit(userId, "updateClub", "Club", clubId,
+                    "Updated club info for \"" + club.getName() + "\"");
         }
 
         resp.sendRedirect(req.getContextPath() + "/app/clubLeaderDashboard?msg=updated");
@@ -528,27 +585,30 @@ public class Connector extends HttpServlet {
     private void handleApproveClub(HttpServletRequest req, HttpServletResponse resp)
             throws IOException {
 
+        int adminId = (int) req.getSession().getAttribute("userId");
         int clubId = Integer.parseInt(req.getParameter("clubId"));
-        ds.approveClub(clubId);
+        ds.approveClub(clubId, adminId);
         resp.sendRedirect(req.getContextPath() + "/app/adminDashboard?msg=approved");
     }
 
     private void handleRejectClub(HttpServletRequest req, HttpServletResponse resp)
             throws IOException {
 
+        int adminId = (int) req.getSession().getAttribute("userId");
         int clubId = Integer.parseInt(req.getParameter("clubId"));
         String reason = req.getParameter("reason");
         if (reason == null || reason.trim().isEmpty()) reason = "Does not meet campus policies.";
-        ds.rejectClub(clubId, reason.trim());
+        ds.rejectClub(clubId, reason.trim(), adminId);
         resp.sendRedirect(req.getContextPath() + "/app/adminDashboard?msg=rejected");
     }
 
     private void handleUpdateUserRole(HttpServletRequest req, HttpServletResponse resp)
             throws IOException {
 
+        int adminId = (int) req.getSession().getAttribute("userId");
         int userId = Integer.parseInt(req.getParameter("userId"));
         String newRole = req.getParameter("newRole");
-        ds.updateUserRole(userId, newRole);
+        ds.updateUserRole(userId, newRole, adminId);
         resp.sendRedirect(req.getContextPath() + "/app/adminDashboard?msg=roleUpdated");
     }
 
@@ -659,7 +719,8 @@ public class Connector extends HttpServlet {
             return;
         }
 
-        if (ds.hasEventConflict(clubId, when, null)) {
+        if (ds.hasEventConflict(clubId, when, null)
+                || ds.hasLeaderEventConflict(userId, when, null)) {
             resp.sendRedirect(req.getContextPath() + "/app/clubLeaderDashboard?msg=eventConflict");
             return;
         }
@@ -692,7 +753,9 @@ public class Connector extends HttpServlet {
         }
 
         Club ownerClub = ds.getClubForEvent(eventId);
-        if (ownerClub != null && ds.hasEventConflict(ownerClub.getId(), when, eventId)) {
+        if (ownerClub != null
+                && (ds.hasEventConflict(ownerClub.getId(), when, eventId)
+                    || ds.hasLeaderEventConflict(userId, when, eventId))) {
             resp.sendRedirect(req.getContextPath() + "/app/clubLeaderDashboard?msg=eventConflict");
             return;
         }
@@ -743,6 +806,44 @@ public class Connector extends HttpServlet {
 
         boolean ok = ds.removeMember(clubId, memberId, leaderId);
         String msg = ok ? "memberRemoved" : "memberDenied";
+        resp.sendRedirect(req.getContextPath() + "/app/clubLeaderDashboard?msg=" + msg);
+    }
+
+    private void handleAddCoLeader(HttpServletRequest req, HttpServletResponse resp)
+            throws IOException {
+
+        int actingLeaderId = (int) req.getSession().getAttribute("userId");
+
+        int clubId, newCoLeaderId;
+        try {
+            clubId        = Integer.parseInt(req.getParameter("clubId"));
+            newCoLeaderId = Integer.parseInt(req.getParameter("coLeaderId"));
+        } catch (NumberFormatException | NullPointerException ex) {
+            resp.sendRedirect(req.getContextPath() + "/app/clubLeaderDashboard?msg=coLeaderBadInput");
+            return;
+        }
+
+        boolean ok = ds.addCoLeader(clubId, newCoLeaderId, actingLeaderId);
+        String msg = ok ? "coLeaderAdded" : "coLeaderDenied";
+        resp.sendRedirect(req.getContextPath() + "/app/clubLeaderDashboard?msg=" + msg);
+    }
+
+    private void handleRemoveCoLeader(HttpServletRequest req, HttpServletResponse resp)
+            throws IOException {
+
+        int actingLeaderId = (int) req.getSession().getAttribute("userId");
+
+        int clubId, coLeaderId;
+        try {
+            clubId     = Integer.parseInt(req.getParameter("clubId"));
+            coLeaderId = Integer.parseInt(req.getParameter("coLeaderId"));
+        } catch (NumberFormatException | NullPointerException ex) {
+            resp.sendRedirect(req.getContextPath() + "/app/clubLeaderDashboard?msg=coLeaderBadInput");
+            return;
+        }
+
+        boolean ok = ds.removeCoLeader(clubId, coLeaderId, actingLeaderId);
+        String msg = ok ? "coLeaderRemoved" : "coLeaderDenied";
         resp.sendRedirect(req.getContextPath() + "/app/clubLeaderDashboard?msg=" + msg);
     }
 }
