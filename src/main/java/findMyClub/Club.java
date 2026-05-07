@@ -20,6 +20,10 @@ public class Club {
     private List<String> keywords = new ArrayList<>();
     private List<ClubEvent> events = new ArrayList<>();
 
+    /** Additional leaders who can co-manage this club. Implements the
+     *  many-to-many "Manages" relationship from the design doc. */
+    private List<Integer> coLeaderIds = new ArrayList<>();
+
     public Club(int id, String name, String description, String category,
                 String meetingLocation, String meetingTime,
                 String communicationPlatform, int leaderId) {
@@ -87,7 +91,21 @@ public class Club {
         return events;
     }
 
+    /** Number of "regular" members — excludes the primary leader and any co-leaders.
+     *  Public-facing labels say "students" / "members" which shouldn't double-count
+     *  the people running the club. */
     public int getMemberCount() {
+        int n = 0;
+        for (Integer id : memberIds) {
+            if (id == leaderId) continue;
+            if (coLeaderIds.contains(id)) continue;
+            n++;
+        }
+        return n;
+    }
+
+    /** Total roster size including leader and co-leaders, for callers that need it. */
+    public int getTotalRosterSize() {
         return memberIds.size();
     }
 
@@ -142,5 +160,28 @@ public class Club {
 
     public void addEvent(ClubEvent event) {
         events.add(event);
+    }
+
+    // ===== Co-leader (many-to-many Manages) helpers =====
+
+    public List<Integer> getCoLeaderIds() {
+        return coLeaderIds;
+    }
+
+    /** True if userId is the primary leader OR a co-leader of this club. */
+    public boolean isManagedBy(int userId) {
+        return userId == leaderId || coLeaderIds.contains(userId);
+    }
+
+    public boolean addCoLeader(int userId) {
+        if (userId == leaderId) return false;          // primary already manages
+        if (coLeaderIds.contains(userId)) return false; // dup
+        coLeaderIds.add(userId);
+        if (!memberIds.contains(userId)) memberIds.add(userId); // co-leaders are members too
+        return true;
+    }
+
+    public boolean removeCoLeader(int userId) {
+        return coLeaderIds.remove(Integer.valueOf(userId));
     }
 }

@@ -18,8 +18,13 @@
 
             <form action="${pageContext.request.contextPath}/app/register" method="post">
                 <div class="form-group">
-                    <label>Full Name</label>
-                    <input type="text" name="name" placeholder="Jane Smith" required>
+                    <label>First Name</label>
+                    <input type="text" name="firstName" placeholder="Jane" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Last Name</label>
+                    <input type="text" name="lastName" placeholder="Smith" required>
                 </div>
 
                 <div class="form-group">

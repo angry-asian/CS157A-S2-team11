@@ -89,7 +89,7 @@
                         </div>
                         <div class="club-meta">
                             <span class="meta-item">📅 ${club.meetingTime}</span>
-                            <span class="meta-item"><strong>${club.memberCount}</strong> members</span>
+                            <span class="meta-item"><strong>${club.memberCount}</strong> member${club.memberCount == 1 ? '' : 's'}</span>
                         </div>
                     </a>
                 </c:forEach>
