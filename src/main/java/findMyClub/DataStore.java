@@ -11,11 +11,38 @@ public class DataStore {
     private final List<User> users = new ArrayList<>();
     private final List<Club> clubs = new ArrayList<>();
     private final List<MembershipRequest> requests = new ArrayList<>();
+    private final List<Message> messages = new ArrayList<>();
+    private final List<SavedEvent> savedEvents = new ArrayList<>();
+    private final List<AuditLog> auditLogs = new ArrayList<>();
 
     private int nextUserId = 1;
     private int nextClubId = 1;
     private int nextRequestId = 1;
     private int nextEventId = 1;
+    private int nextMessageId = 1;
+    private int nextSavedEventId = 1;
+    private int nextAuditId = 1;
+
+    /** Append an audit log row. Spec: "System maintains a log for all changes." */
+    public synchronized AuditLog recordAudit(int actorId, String action,
+                                             String targetType, int targetId, String details) {
+        AuditLog row = new AuditLog(nextAuditId++, actorId, action, targetType, targetId, details);
+        auditLogs.add(row);
+        return row;
+    }
+
+    public List<AuditLog> getAllAuditLogs() {
+        List<AuditLog> copy = new ArrayList<>(auditLogs);
+        copy.sort((a, b) -> b.getOccurredAt().compareTo(a.getOccurredAt())); // newest first
+        return copy;
+    }
+
+    public List<AuditLog> getAuditLogsForActor(int actorId) {
+        return auditLogs.stream()
+                .filter(a -> a.getActorId() == actorId)
+                .sorted((a, b) -> b.getOccurredAt().compareTo(a.getOccurredAt()))
+                .collect(Collectors.toList());
+    }
 
     private DataStore() {
         seedData();
@@ -70,6 +97,9 @@ public class DataStore {
         photo.setStatus("approved");
         photo.getKeywords().addAll(Arrays.asList("photography", "art", "camera", "creative"));
         photo.getMemberIds().add(32);
+        // Frank Garcia (31) co-leads Photography Club. Demonstrates the
+        // many-to-many "Manages" relationship out of the box.
+        photo.addCoLeader(31);
         clubs.add(photo);
 
         Club robotics = new Club(23, "Robotics Club",
@@ -142,12 +172,30 @@ public class DataStore {
 
         nextClubId = 31;
         nextEventId = 10;
+
+        messages.add(new Message(nextMessageId++, 21, 31, "Hi! I want to join the Chess Club."));
+        messages.add(new Message(nextMessageId++, 31, 21, "Welcome! Please submit a membership request."));
+        messages.add(new Message(nextMessageId++, 22, 32, "When is the Photography Club meeting?"));
+        messages.add(new Message(nextMessageId++, 32, 22, "Every Wednesday at 3 PM in IS 219."));
+        messages.add(new Message(nextMessageId++, 23, 33, "Can I help with the Robotics build session?"));
+        messages.add(new Message(nextMessageId++, 24, 34, "Is the Fencing Club open for new members?"));
+        messages.add(new Message(nextMessageId++, 25, 35, "How do I join the D&D Club online?"));
     }
 
     public synchronized User registerUser(String name, String email, String password, String role) {
         boolean exists = users.stream().anyMatch(u -> u.getEmail().equalsIgnoreCase(email));
         if (exists) return null;
         User u = new User(nextUserId++, name, email, password, role);
+        users.add(u);
+        return u;
+    }
+
+    /** Registration overload that matches the schema's First_Name / Last_Name columns. */
+    public synchronized User registerUser(String firstName, String lastName,
+                                          String email, String password, String role) {
+        boolean exists = users.stream().anyMatch(u -> u.getEmail().equalsIgnoreCase(email));
+        if (exists) return null;
+        User u = new User(nextUserId++, firstName, lastName, email, password, role);
         users.add(u);
         return u;
     }
@@ -211,12 +259,15 @@ public class DataStore {
         c.setStatus("pending");
         c.getMemberIds().add(leaderId);
         clubs.add(c);
+        recordAudit(leaderId, "createClub", "Club", c.getId(), "Requested new club \"" + name + "\"");
         return c;
     }
 
+    /** Clubs the user manages — primary leader OR co-leader.
+     *  Implements the many-to-many "Manages" relationship from the design doc. */
     public List<Club> getClubsByLeader(int leaderId) {
         return clubs.stream()
-                .filter(c -> c.getLeaderId() == leaderId)
+                .filter(c -> c.isManagedBy(leaderId))
                 .collect(Collectors.toList());
     }
 
@@ -244,6 +295,9 @@ public class DataStore {
         if (already) return null;
         MembershipRequest r = new MembershipRequest(nextRequestId++, studentId, clubId);
         requests.add(r);
+        Club tgt = getClubById(clubId);
+        recordAudit(studentId, "submitRequest", "MembershipRequest", r.getId(),
+                "Requested to join " + (tgt != null ? tgt.getName() : "club#" + clubId));
         return r;
     }
 
@@ -271,6 +325,7 @@ public class DataStore {
                     r.getStudentId() == studentId &&
                     "pending".equals(r.getStatus())) {
                 r.setStatus("cancelled");
+                recordAudit(studentId, "cancelRequest", "MembershipRequest", requestId, "");
                 return true;
             }
         }
@@ -281,12 +336,18 @@ public class DataStore {
         for (MembershipRequest r : requests) {
             if (r.getId() == requestId && "pending".equals(r.getStatus())) {
                 Club club = getClubById(r.getClubId());
-                if (club != null && club.getLeaderId() == leaderId) {
+                if (club != null && club.isManagedBy(leaderId)) {
                     r.setStatus(decision);
                     r.setResponseDate(LocalDateTime.now());
                     if ("approved".equals(decision)) {
                         club.getMemberIds().add(r.getStudentId());
                     }
+                    User student = getUserById(r.getStudentId());
+                    String who = student != null ? student.getName() : "user#" + r.getStudentId();
+                    recordAudit(leaderId,
+                            "approved".equals(decision) ? "approveRequest" : "rejectRequest",
+                            "MembershipRequest", requestId,
+                            decision + " join request from " + who + " for " + club.getName());
                     return true;
                 }
             }
@@ -296,5 +357,365 @@ public class DataStore {
 
     public List<MembershipRequest> getAllRequests() {
         return requests;
+    }
+
+    public List<Club> getPendingClubs() {
+        return clubs.stream()
+                .filter(c -> "pending".equals(c.getStatus()))
+                .collect(Collectors.toList());
+    }
+
+    /** Approve a pending club. Audit-logged with the admin's id. */
+    public boolean approveClub(int clubId, int adminId) {
+        Club c = getClubById(clubId);
+        if (c != null && "pending".equals(c.getStatus())) {
+            c.setStatus("approved");
+            recordAudit(adminId, "approveClub", "Club", clubId, "Approved \"" + c.getName() + "\"");
+            return true;
+        }
+        return false;
+    }
+
+    /** Backwards-compatible overload — uses 0 as the actor when admin id is unknown. */
+    public boolean approveClub(int clubId) { return approveClub(clubId, 0); }
+
+    public boolean rejectClub(int clubId, String reason, int adminId) {
+        Club c = getClubById(clubId);
+        if (c != null && "pending".equals(c.getStatus())) {
+            c.setStatus("rejected");
+            c.setRejectionReason(reason);
+            recordAudit(adminId, "rejectClub", "Club", clubId,
+                    "Rejected \"" + c.getName() + "\": " + reason);
+            return true;
+        }
+        return false;
+    }
+
+    public boolean rejectClub(int clubId, String reason) { return rejectClub(clubId, reason, 0); }
+
+    public boolean updateUserRole(int userId, String newRole, int adminId) {
+        User u = getUserById(userId);
+        if (u != null) {
+            String old = u.getRole();
+            u.setRole(newRole);
+            recordAudit(adminId, "updateUserRole", "User", userId,
+                    u.getName() + ": " + old + " → " + newRole);
+            return true;
+        }
+        return false;
+    }
+
+    public boolean updateUserRole(int userId, String newRole) { return updateUserRole(userId, newRole, 0); }
+
+    public synchronized Message sendMessage(int senderId, int receiverId, String content) {
+        if (content == null || content.trim().isEmpty()) return null;
+        Message m = new Message(nextMessageId++, senderId, receiverId, content.trim());
+        messages.add(m);
+        return m;
+    }
+
+    /** All conversations for a user: grouped by the other party. */
+    public List<Integer> getConversationPartners(int userId) {
+        Set<Integer> partners = new LinkedHashSet<>();
+        for (Message m : messages) {
+            if (m.getSenderId() == userId)   partners.add(m.getReceiverId());
+            if (m.getReceiverId() == userId) partners.add(m.getSenderId());
+        }
+        return new ArrayList<>(partners);
+    }
+
+    public List<Message> getConversation(int userId, int partnerId) {
+        return messages.stream()
+                .filter(m -> (m.getSenderId() == userId   && m.getReceiverId() == partnerId)
+                          || (m.getSenderId() == partnerId && m.getReceiverId() == userId))
+                .sorted(Comparator.comparing(Message::getSentAt))
+                .collect(Collectors.toList());
+    }
+
+    public int getUnreadCount(int userId) {
+        return (int) messages.stream()
+                .filter(m -> m.getReceiverId() == userId && !m.isRead())
+                .count();
+    }
+
+    public void markConversationRead(int userId, int partnerId) {
+        messages.stream()
+                .filter(m -> m.getSenderId() == partnerId && m.getReceiverId() == userId)
+                .forEach(m -> m.setRead(true));
+    }
+
+    public List<Message> getAllMessages() { return messages; }
+
+    public synchronized SavedEvent saveEvent(int userId, int eventId, int clubId) {
+        boolean already = savedEvents.stream()
+                .anyMatch(s -> s.getUserId() == userId && s.getEventId() == eventId);
+        if (already) return null;
+        SavedEvent se = new SavedEvent(nextSavedEventId++, userId, eventId, clubId);
+        savedEvents.add(se);
+        return se;
+    }
+
+    public boolean unsaveEvent(int userId, int eventId) {
+        return savedEvents.removeIf(s -> s.getUserId() == userId && s.getEventId() == eventId);
+    }
+
+    public boolean isEventSaved(int userId, int eventId) {
+        return savedEvents.stream()
+                .anyMatch(s -> s.getUserId() == userId && s.getEventId() == eventId);
+    }
+
+    public List<SavedEvent> getSavedEventsForUser(int userId) {
+        return savedEvents.stream()
+                .filter(s -> s.getUserId() == userId)
+                .collect(Collectors.toList());
+    }
+
+    /** Find a ClubEvent by its id across all clubs. */
+    public ClubEvent getEventById(int eventId) {
+        for (Club c : clubs) {
+            for (ClubEvent e : c.getEvents()) {
+                if (e.getId() == eventId) return e;
+            }
+        }
+        return null;
+    }
+
+    /** Find the Club that owns the given event id, or null. */
+    public Club getClubForEvent(int eventId) {
+        for (Club c : clubs) {
+            for (ClubEvent e : c.getEvents()) {
+                if (e.getId() == eventId) return c;
+            }
+        }
+        return null;
+    }
+
+    /** All events across all approved clubs. */
+    public List<ClubEvent> getAllEvents() {
+        List<ClubEvent> all = new ArrayList<>();
+        for (Club c : clubs) {
+            if ("approved".equals(c.getStatus())) {
+                all.addAll(c.getEvents());
+            }
+        }
+        all.sort(Comparator.comparing(ClubEvent::getEventDate));
+        return all;
+    }
+
+    /** All events for a single club, sorted by date. */
+    public List<ClubEvent> getEventsByClub(int clubId) {
+        Club c = getClubById(clubId);
+        if (c == null) return new ArrayList<>();
+        List<ClubEvent> list = new ArrayList<>(c.getEvents());
+        list.sort(Comparator.comparing(ClubEvent::getEventDate));
+        return list;
+    }
+
+    /** All events across every club managed (leader OR co-leader) by the given user, sorted by date. */
+    public List<ClubEvent> getEventsByLeader(int leaderId) {
+        List<ClubEvent> all = new ArrayList<>();
+        for (Club c : clubs) {
+            if (c.isManagedBy(leaderId)) {
+                all.addAll(c.getEvents());
+            }
+        }
+        all.sort(Comparator.comparing(ClubEvent::getEventDate));
+        return all;
+    }
+
+    /** Create an event under a club. Caller must be the club's leader. */
+    public synchronized ClubEvent createEvent(int clubId, int leaderId,
+                                              String title, String description,
+                                              String location, LocalDateTime eventDate) {
+        if (title == null || title.trim().isEmpty()) return null;
+        if (eventDate == null) return null;
+
+        Club c = getClubById(clubId);
+        if (c == null || !c.isManagedBy(leaderId)) return null;
+
+        ClubEvent e = new ClubEvent(nextEventId++,
+                title.trim(),
+                description == null ? "" : description.trim(),
+                location == null ? "" : location.trim(),
+                eventDate,
+                clubId);
+        c.getEvents().add(e);
+        recordAudit(leaderId, "createEvent", "ClubEvent", e.getId(),
+                "Created \"" + e.getTitle() + "\" for " + c.getName());
+        return e;
+    }
+
+    /** Update an event. Caller must be the parent club's leader OR co-leader. */
+    public synchronized boolean updateEvent(int eventId, int leaderId,
+                                            String title, String description,
+                                            String location, LocalDateTime eventDate) {
+        Club c = getClubForEvent(eventId);
+        if (c == null || !c.isManagedBy(leaderId)) return false;
+
+        ClubEvent e = getEventById(eventId);
+        if (e == null) return false;
+
+        if (title != null && !title.trim().isEmpty()) e.setTitle(title.trim());
+        e.setDescription(description == null ? "" : description.trim());
+        e.setLocation(location == null ? "" : location.trim());
+        if (eventDate != null) e.setEventDate(eventDate);
+        recordAudit(leaderId, "updateEvent", "ClubEvent", eventId,
+                "Updated \"" + e.getTitle() + "\" for " + c.getName());
+        return true;
+    }
+
+    /** Delete an event. Caller must be the parent club's leader OR co-leader. Also drops saved-event refs. */
+    public synchronized boolean deleteEvent(int eventId, int leaderId) {
+        Club c = getClubForEvent(eventId);
+        if (c == null || !c.isManagedBy(leaderId)) return false;
+
+        ClubEvent toRemove = getEventById(eventId);
+        String title = toRemove != null ? toRemove.getTitle() : "event#" + eventId;
+
+        boolean removed = c.getEvents().removeIf(e -> e.getId() == eventId);
+        if (removed) {
+            savedEvents.removeIf(s -> s.getEventId() == eventId);
+            recordAudit(leaderId, "deleteEvent", "ClubEvent", eventId,
+                    "Deleted \"" + title + "\" from " + c.getName());
+        }
+        return removed;
+    }
+
+    /** Returns true if the club already has an event within 60 minutes of the candidate.
+     *  ignoreEventId allows skipping a specific event id (used when updating). */
+    public boolean hasEventConflict(int clubId, LocalDateTime when, Integer ignoreEventId) {
+        if (when == null) return false;
+        Club c = getClubById(clubId);
+        if (c == null) return false;
+        for (ClubEvent e : c.getEvents()) {
+            if (ignoreEventId != null && e.getId() == ignoreEventId.intValue()) continue;
+            long minutes = Math.abs(java.time.Duration.between(e.getEventDate(), when).toMinutes());
+            if (minutes < 60) return true;
+        }
+        return false;
+    }
+
+    /** Returns true if the leader (or co-leader) already has an event within 60 minutes
+     *  of the candidate, in ANY of the clubs they manage. Prevents a leader from
+     *  double-booking themselves across clubs. */
+    public boolean hasLeaderEventConflict(int leaderId, LocalDateTime when, Integer ignoreEventId) {
+        if (when == null) return false;
+        for (Club c : getClubsByLeader(leaderId)) {
+            for (ClubEvent e : c.getEvents()) {
+                if (ignoreEventId != null && e.getId() == ignoreEventId.intValue()) continue;
+                long minutes = Math.abs(java.time.Duration.between(e.getEventDate(), when).toMinutes());
+                if (minutes < 60) return true;
+            }
+        }
+        return false;
+    }
+
+    /** Members of a club as full User objects. */
+    public List<User> getMembersByClub(int clubId) {
+        Club c = getClubById(clubId);
+        if (c == null) return new ArrayList<>();
+        List<User> list = new ArrayList<>();
+        for (Integer id : c.getMemberIds()) {
+            User u = getUserById(id);
+            if (u != null) list.add(u);
+        }
+        return list;
+    }
+
+    /** Remove a member from a club. Caller must be the club's leader or co-leader.
+     *  The primary leader cannot be removed through this path; co-leaders cannot remove themselves. */
+    public synchronized boolean removeMember(int clubId, int userId, int leaderId) {
+        Club c = getClubById(clubId);
+        if (c == null || !c.isManagedBy(leaderId)) return false;
+        if (userId == c.getLeaderId()) return false; // primary leader can't be removed
+        if (userId == leaderId) return false;        // can't remove yourself
+        // If they were a co-leader, also strip that role.
+        c.removeCoLeader(userId);
+        boolean removed = c.getMemberIds().removeIf(id -> id == userId);
+        if (removed) {
+            User who = getUserById(userId);
+            recordAudit(leaderId, "removeMember", "Club", clubId,
+                    "Removed " + (who != null ? who.getName() : "user#" + userId) + " from " + c.getName());
+        }
+        return removed;
+    }
+
+    /** All other users with the clubLeader role (excluding the current user). */
+    public List<User> getOtherClubLeaders(int excludeUserId) {
+        return users.stream()
+                .filter(u -> "clubLeader".equals(u.getRole()) && u.getId() != excludeUserId)
+                .sorted(Comparator.comparing(User::getName))
+                .collect(Collectors.toList());
+    }
+
+    // ===== Co-leader management (many-to-many Manages) =====
+
+    /** Co-leader User objects for a club, in name order. */
+    public List<User> getCoLeaders(int clubId) {
+        Club c = getClubById(clubId);
+        if (c == null) return new ArrayList<>();
+        List<User> list = new ArrayList<>();
+        for (Integer id : c.getCoLeaderIds()) {
+            User u = getUserById(id);
+            if (u != null) list.add(u);
+        }
+        list.sort(Comparator.comparing(User::getName));
+        return list;
+    }
+
+    /** Other clubLeader-role users not already managing the given club.
+     *  These are the candidates for the "invite co-leader" dropdown. */
+    public List<User> getCoLeaderCandidates(int clubId) {
+        Club c = getClubById(clubId);
+        if (c == null) return new ArrayList<>();
+        return users.stream()
+                .filter(u -> "clubLeader".equals(u.getRole()))
+                .filter(u -> !c.isManagedBy(u.getId()))
+                .sorted(Comparator.comparing(User::getName))
+                .collect(Collectors.toList());
+    }
+
+    /** Add a co-leader. Caller must be the primary leader. */
+    public synchronized boolean addCoLeader(int clubId, int newCoLeaderId, int actingLeaderId) {
+        Club c = getClubById(clubId);
+        if (c == null || c.getLeaderId() != actingLeaderId) return false;
+        User u = getUserById(newCoLeaderId);
+        if (u == null || !"clubLeader".equals(u.getRole())) return false;
+        boolean added = c.addCoLeader(newCoLeaderId);
+        if (added) {
+            recordAudit(actingLeaderId, "addCoLeader", "Club", clubId,
+                    "Added " + u.getName() + " as co-leader of " + c.getName());
+        }
+        return added;
+    }
+
+    /** Remove a co-leader. Caller must be the primary leader. */
+    public synchronized boolean removeCoLeader(int clubId, int coLeaderId, int actingLeaderId) {
+        Club c = getClubById(clubId);
+        if (c == null || c.getLeaderId() != actingLeaderId) return false;
+        boolean removed = c.removeCoLeader(coLeaderId);
+        if (removed) {
+            User u = getUserById(coLeaderId);
+            recordAudit(actingLeaderId, "removeCoLeader", "Club", clubId,
+                    "Removed " + (u != null ? u.getName() : "user#" + coLeaderId)
+                    + " as co-leader of " + c.getName());
+        }
+        return removed;
+    }
+
+    /** Non-pending request history for all clubs led by the given leader. */
+    public List<MembershipRequest> getRequestHistoryByLeader(int leaderId) {
+        List<MembershipRequest> all = new ArrayList<>();
+        for (Club c : getClubsByLeader(leaderId)) {
+            for (MembershipRequest r : getAllRequestsForClub(c.getId())) {
+                if (!"pending".equals(r.getStatus())) all.add(r);
+            }
+        }
+        all.sort((a, b) -> {
+            LocalDateTime da = a.getResponseDate() != null ? a.getResponseDate() : a.getRequestDate();
+            LocalDateTime db = b.getResponseDate() != null ? b.getResponseDate() : b.getRequestDate();
+            return db.compareTo(da); // newest first
+        });
+        return all;
     }
 }

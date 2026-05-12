@@ -14,12 +14,16 @@
     <a class="nav-brand" href="${pageContext.request.contextPath}/app/search">Find<span>My</span>Club</a>
     <div class="nav-links">
         <% if (session.getAttribute("userId") != null) { %>
-            <span class="nav-user">👋 ${sessionScope.userName}</span>
-            <% if ("clubLeader".equals(session.getAttribute("userRole"))) { %>
+            <% if ("admin".equals(session.getAttribute("userRole"))) { %>
+                <a href="${pageContext.request.contextPath}/app/adminDashboard">🛡️ Admin Panel</a>
+            <% } else if ("clubLeader".equals(session.getAttribute("userRole"))) { %>
                 <a href="${pageContext.request.contextPath}/app/clubLeaderDashboard">My Dashboard</a>
             <% } else { %>
                 <a href="${pageContext.request.contextPath}/app/studentDashboard">My Dashboard</a>
             <% } %>
+            <a href="${pageContext.request.contextPath}/app/messages">💬 Messages</a>
+            <a href="${pageContext.request.contextPath}/app/savedEvents">⭐ Saved Events</a>
+            <span class="nav-user">👋 ${sessionScope.userName}</span>
             <a href="${pageContext.request.contextPath}/app/logout">Log Out</a>
         <% } else { %>
             <a href="${pageContext.request.contextPath}/app/login">Sign In</a>
@@ -53,9 +57,14 @@
                 <div class="info-row"><span>📍</span><div><strong>Location</strong><br>${club.meetingLocation}</div></div>
                 <div class="info-row"><span>🕐</span><div><strong>Meets</strong><br>${club.meetingTime}</div></div>
                 <div class="info-row"><span>💬</span><div><strong>Communication</strong><br>${club.communicationPlatform}</div></div>
-                <div class="info-row"><span>👥</span><div><strong>Members</strong><br>${club.memberCount} students</div></div>
+                <div class="info-row"><span>👥</span><div><strong>Members</strong><br>${club.memberCount} student${club.memberCount == 1 ? '' : 's'}</div></div>
                 <c:if test="${leader != null}">
                     <div class="info-row"><span>🏅</span><div><strong>Club Leader</strong><br>${leader.name}</div></div>
+                </c:if>
+                <c:if test="${not empty coLeaders}">
+                    <div class="info-row"><span>🤝</span><div><strong>Co-leaders</strong><br>
+                        <c:forEach var="cl" items="${coLeaders}" varStatus="loop">${cl.name}<c:if test="${not loop.last}">, </c:if></c:forEach>
+                    </div></div>
                 </c:if>
             </div>
 

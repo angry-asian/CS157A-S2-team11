@@ -15,12 +15,16 @@
     </a>
     <div class="nav-links">
         <% if (session.getAttribute("userId") != null) { %>
-            <span class="nav-user">👋 ${sessionScope.userName}</span>
-            <% if ("clubLeader".equals(session.getAttribute("userRole"))) { %>
+            <% if ("admin".equals(session.getAttribute("userRole"))) { %>
+                <a href="${pageContext.request.contextPath}/app/adminDashboard">🛡️ Admin Panel</a>
+            <% } else if ("clubLeader".equals(session.getAttribute("userRole"))) { %>
                 <a href="${pageContext.request.contextPath}/app/clubLeaderDashboard">My Dashboard</a>
             <% } else { %>
                 <a href="${pageContext.request.contextPath}/app/studentDashboard">My Dashboard</a>
             <% } %>
+            <a href="${pageContext.request.contextPath}/app/messages">💬 Messages</a>
+            <a href="${pageContext.request.contextPath}/app/savedEvents">⭐ Saved Events</a>
+            <span class="nav-user">👋 ${sessionScope.userName}</span>
             <a href="${pageContext.request.contextPath}/app/logout">Log Out</a>
         <% } else { %>
             <a href="${pageContext.request.contextPath}/app/login">Sign In</a>
@@ -85,7 +89,7 @@
                         </div>
                         <div class="club-meta">
                             <span class="meta-item">📅 ${club.meetingTime}</span>
-                            <span class="meta-item"><strong>${club.memberCount}</strong> members</span>
+                            <span class="meta-item"><strong>${club.memberCount}</strong> member${club.memberCount == 1 ? '' : 's'}</span>
                         </div>
                     </a>
                 </c:forEach>

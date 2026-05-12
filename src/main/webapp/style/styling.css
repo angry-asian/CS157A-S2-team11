@@ -222,3 +222,90 @@ body {
 .mt-1 { margin-top: .5rem; }
 .mt-2 { margin-top: 1rem; }
 .mt-3 { margin-top: 1.5rem; }
+
+/* ----- Modals ----- */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 1000;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 4rem 1rem;
+    overflow-y: auto;
+}
+.modal-overlay.open { display: flex; }
+
+.modal {
+    background: #fff;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 560px;
+    padding: 1.6rem 1.8rem;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+.modal h2 {
+    margin: 0 0 1rem;
+    color: var(--navy, #0055A2);
+    font-size: 1.4rem;
+}
+.modal label {
+    display: block;
+    font-weight: 600;
+    margin-top: .8rem;
+    margin-bottom: .25rem;
+    font-size: .9rem;
+}
+.modal input[type="text"],
+.modal input[type="datetime-local"],
+.modal textarea,
+.modal select {
+    width: 100%;
+    padding: .55rem .7rem;
+    border: 1px solid var(--gray-300, #cfd6e3);
+    border-radius: 6px;
+    font-size: .95rem;
+    font-family: inherit;
+    box-sizing: border-box;
+}
+.modal textarea { min-height: 90px; resize: vertical; }
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: .6rem;
+    margin-top: 1.4rem;
+}
+
+/* ----- Member roster (per-club expandable list) ----- */
+.member-roster {
+    border-top: 1px dashed var(--gray-300, #cfd6e3);
+    padding-top: .5rem;
+    margin-top: .3rem;
+}
+.member-roster summary {
+    cursor: pointer;
+    font-weight: 600;
+    font-size: .9rem;
+    color: var(--gray-500, #5b6478);
+}
+.member-list,
+.leader-list {
+    list-style: none;
+    margin: .5rem 0 0;
+    padding: 0;
+}
+.member-list li,
+.leader-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: .6rem;
+    padding: .45rem 0;
+    border-bottom: 1px solid var(--gray-100, #eef1f6);
+    font-size: .9rem;
+}
+.member-list li:last-child,
+.leader-list li:last-child {
+    border-bottom: none;
+}
