@@ -99,13 +99,9 @@
                         </div>
                         <div class="club-meta">
                             <span class="meta-item">📅 ${club.meetingTime}</span>
-<<<<<<< Updated upstream
-                            <span class="meta-item"><strong>${club.memberCount}</strong> members</span>
-=======
                             <span class="meta-item">
                                 <strong>${club.memberCount}</strong> members
                             </span>
->>>>>>> Stashed changes
                         </div>
                     </a>
                 </c:forEach>

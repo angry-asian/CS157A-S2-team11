@@ -57,9 +57,14 @@
                 <div class="info-row"><span>📍</span><div><strong>Location</strong><br>${club.meetingLocation}</div></div>
                 <div class="info-row"><span>🕐</span><div><strong>Meets</strong><br>${club.meetingTime}</div></div>
                 <div class="info-row"><span>💬</span><div><strong>Communication</strong><br>${club.communicationPlatform}</div></div>
-                <div class="info-row"><span>👥</span><div><strong>Members</strong><br>${club.memberCount} students</div></div>
+                <div class="info-row"><span>👥</span><div><strong>Members</strong><br>${club.memberCount} student${club.memberCount == 1 ? '' : 's'}</div></div>
                 <c:if test="${leader != null}">
                     <div class="info-row"><span>🏅</span><div><strong>Club Leader</strong><br>${leader.name}</div></div>
+                </c:if>
+                <c:if test="${not empty coLeaders}">
+                    <div class="info-row"><span>🤝</span><div><strong>Co-leaders</strong><br>
+                        <c:forEach var="cl" items="${coLeaders}" varStatus="loop">${cl.name}<c:if test="${not loop.last}">, </c:if></c:forEach>
+                    </div></div>
                 </c:if>
             </div>
 

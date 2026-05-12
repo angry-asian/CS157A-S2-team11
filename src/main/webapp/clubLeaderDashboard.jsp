@@ -39,23 +39,13 @@
         <div class="alert alert-success">✅ Membership request approved.</div>
     </c:if>
     <c:if test="${flashMsg == 'rejected'}">
-<<<<<<< Updated upstream
-        <div class="alert alert-info mt-2">Request rejected.</div>
-=======
         <div class="alert alert-info">Request rejected.</div>
->>>>>>> Stashed changes
     </c:if>
 
     <div class="dash-grid">
 
-<<<<<<< Updated upstream
-        <!-- My Clubs Section -->
-        <div class="dash-section">
-            <h2>🏛 My Clubs</h2>
-=======
         <div class="dash-section">
             <h2>🏛️ My Clubs</h2>
->>>>>>> Stashed changes
             <c:choose>
                 <c:when test="${empty myClubs}">
                     <div style="text-align:center;padding:2rem 0;color:var(--gray-400)">
@@ -73,16 +63,11 @@
                             <div style="display:flex;gap:.4rem;align-items:center">
                                 <span class="status-badge status-${club.status}">${club.status}</span>
                                 <button class="btn-outline btn-sm"
-<<<<<<< Updated upstream
-                                        onclick="openEdit(${club.id},'${club.description}','${club.meetingLocation}','${club.meetingTime}','${club.communicationPlatform}')">Edit</button>
-                                <a href="${pageContext.request.contextPath}/app/club?id=${club.id}" class="btn-gold btn-sm">View</a>
-=======
                                         onclick="openEdit(${club.id},'${club.description}','${club.meetingLocation}','${club.meetingTime}','${club.communicationPlatform}')">
                                     Edit
                                 </button>
                                 <a href="${pageContext.request.contextPath}/app/club?id=${club.id}"
                                    class="btn-gold btn-sm">View</a>
->>>>>>> Stashed changes
                             </div>
                         </div>
                     </c:forEach>
@@ -137,10 +122,6 @@
             </c:choose>
         </div>
 
-<<<<<<< Updated upstream
-        <!-- Create New Club Section -->
-=======
->>>>>>> Stashed changes
         <div class="dash-section full-width">
             <h2>➕ Create New Club</h2>
             <form action="${pageContext.request.contextPath}/app/createClub" method="post"
@@ -183,10 +164,6 @@
     </div>
 </div>
 
-<<<<<<< Updated upstream
-<!-- Edit Modal -->
-=======
->>>>>>> Stashed changes
 <div class="modal-overlay" id="editModal">
     <div class="modal">
         <h2>Edit Club Info</h2>

@@ -820,12 +820,6 @@ body {
 .status-rejected  { background: var(--red-lt);    color: #991B1B; }
 .status-cancelled { background: var(--gray-100);  color: var(--gray-500); }
 
-<<<<<<< Updated upstream
-.text-muted { color: var(--gray-500); }
-.mt-1 { margin-top: .5rem; }
-.mt-2 { margin-top: 1rem; }
-.mt-3 { margin-top: 1.5rem; }
-=======
 .event-item {
     padding: .9rem 0;
     border-bottom: 1px solid var(--gray-100);
@@ -1011,4 +1005,3 @@ body {
 
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
->>>>>>> Stashed changes
