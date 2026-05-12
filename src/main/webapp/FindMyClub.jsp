@@ -11,7 +11,7 @@
 
 <nav class="navbar">
     <a class="nav-brand" href="${pageContext.request.contextPath}/app/search">
-        Find<span>My</span>Club
+        Find<em>My</em>Club
     </a>
     <div class="nav-links">
         <% if (session.getAttribute("userId") != null) { %>
@@ -34,10 +34,12 @@
 </nav>
 
 <div class="hero">
+    <span class="hero-sub">San José State University</span>
     <h1>Find Your <em>Perfect</em> Club</h1>
     <p>Explore every student organization on campus — all in one place.</p>
     <form action="${pageContext.request.contextPath}/app/search" method="get" class="search-bar">
-        <input type="text" name="q" placeholder="Search by name, keyword, or category…"
+        <input type="text" name="q"
+               placeholder="Search by name, keyword, or category…"
                value="${not empty query ? query : ''}">
         <button type="submit">Search</button>
     </form>
@@ -53,25 +55,29 @@
                 <option value="${cat}" ${cat == selectedCategory ? 'selected' : ''}>${cat}</option>
             </c:forEach>
         </select>
-
         <label>Sort by:</label>
         <select name="sort">
             <option value="name" ${sortBy == 'name' ? 'selected' : ''}>Name (A–Z)</option>
             <option value="size" ${sortBy == 'size' ? 'selected' : ''}>Most Members</option>
         </select>
-
         <button type="submit" class="filter-btn">Apply</button>
         <a href="${pageContext.request.contextPath}/app/search"
-           style="font-size:.85rem;color:var(--gray-500);text-decoration:none;">Clear</a>
+           style="font-size:.82rem;color:var(--gray-400);text-decoration:none;font-weight:500">
+            Clear
+        </a>
     </div>
 </form>
 
 <div class="container">
-    <p class="results-count">Showing <strong>${clubs.size()}</strong> club(s)</p>
+    <p class="results-count">
+        Showing <strong>${clubs.size()}</strong> club(s)
+        <c:if test="${not empty query}"> for "<strong>${query}</strong>"</c:if>
+    </p>
 
     <c:choose>
         <c:when test="${empty clubs}">
             <div class="empty-state">
+                <div style="font-size:3rem;margin-bottom:1rem">🔍</div>
                 <h3>No clubs found</h3>
                 <p>Try a different search term or clear the filters.</p>
             </div>
@@ -79,7 +85,11 @@
         <c:otherwise>
             <div class="club-grid">
                 <c:forEach var="club" items="${clubs}">
-                    <a class="club-card" href="${pageContext.request.contextPath}/app/club?id=${club.id}">
+                    <a class="club-card"
+                       href="${pageContext.request.contextPath}/app/club?id=${club.id}">
+                        <div class="club-card-img-placeholder">
+                            ${club.name.substring(0,1)}
+                        </div>
                         <div class="club-card-header">
                             <span class="club-cat-badge">${club.category}</span>
                             <h3>${club.name}</h3>
@@ -89,13 +99,23 @@
                         </div>
                         <div class="club-meta">
                             <span class="meta-item">📅 ${club.meetingTime}</span>
+<<<<<<< Updated upstream
                             <span class="meta-item"><strong>${club.memberCount}</strong> members</span>
+=======
+                            <span class="meta-item">
+                                <strong>${club.memberCount}</strong> members
+                            </span>
+>>>>>>> Stashed changes
                         </div>
                     </a>
                 </c:forEach>
             </div>
         </c:otherwise>
     </c:choose>
+</div>
+
+<div class="footer">
+    <strong>FindMyClub</strong> — San José State University · Student Organization Portal
 </div>
 
 </body>

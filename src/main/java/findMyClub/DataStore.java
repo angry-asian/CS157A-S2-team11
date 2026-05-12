@@ -1,5 +1,6 @@
 package findMyClub;
 
+import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -285,6 +286,19 @@ public class DataStore {
                 r.setStatus("cancelled");
                 return true;
             }
+        }
+        return false;
+    }
+    
+    public boolean cancelRequestAsAdmin(int requestId) {
+        String sql = "UPDATE Membership_Requests SET Status='Cancelled' " +
+                     "WHERE Request_ID=? AND Status='Pending'";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, requestId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("[DataStore] cancelRequestAsAdmin error: " + e.getMessage());
         }
         return false;
     }

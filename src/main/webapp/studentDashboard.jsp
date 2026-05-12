@@ -3,12 +3,10 @@
 <%
     String role = (String) session.getAttribute("userRole");
     if ("admin".equals(role)) {
-        response.sendRedirect(request.getContextPath() + "/app/adminDashboard");
-        return;
+        response.sendRedirect(request.getContextPath() + "/app/adminDashboard"); return;
     }
     if ("clubLeader".equals(role)) {
-        response.sendRedirect(request.getContextPath() + "/app/clubLeaderDashboard");
-        return;
+        response.sendRedirect(request.getContextPath() + "/app/clubLeaderDashboard"); return;
     }
 %>
 <!DOCTYPE html>
@@ -21,7 +19,9 @@
 <body>
 
 <nav class="navbar">
-    <a class="nav-brand" href="${pageContext.request.contextPath}/app/search">Find<span>My</span>Club</a>
+    <a class="nav-brand" href="${pageContext.request.contextPath}/app/search">
+        Find<em>My</em>Club
+    </a>
     <div class="nav-links">
         <a href="${pageContext.request.contextPath}/app/search">Browse Clubs</a>
         <a href="${pageContext.request.contextPath}/app/savedEvents">⭐ Saved Events</a>
@@ -39,13 +39,17 @@
 <div class="container">
     <div class="dash-grid">
 
-        <!-- My Clubs Section -->
         <div class="dash-section">
             <h2>🎓 My Clubs</h2>
             <c:choose>
                 <c:when test="${empty myClubs}">
-                    <p class="text-muted">You haven't joined any clubs yet.</p>
-                    <a href="${pageContext.request.contextPath}/app/search" class="btn-gold mt-2">Browse Clubs</a>
+                    <div style="text-align:center;padding:2rem 0;color:var(--gray-400)">
+                        <div style="font-size:2rem;margin-bottom:.5rem">🏛️</div>
+                        <p style="margin-bottom:1rem">You haven't joined any clubs yet.</p>
+                        <a href="${pageContext.request.contextPath}/app/search" class="btn-gold">
+                            Browse Clubs
+                        </a>
+                    </div>
                 </c:when>
                 <c:otherwise>
                     <c:forEach var="club" items="${myClubs}">
@@ -62,12 +66,14 @@
             </c:choose>
         </div>
 
-        <!-- My Requests Section -->
         <div class="dash-section">
             <h2>📋 My Requests</h2>
             <c:choose>
                 <c:when test="${empty myRequests}">
-                    <p class="text-muted">No membership requests submitted yet.</p>
+                    <div style="text-align:center;padding:2rem 0;color:var(--gray-400)">
+                        <div style="font-size:2rem;margin-bottom:.5rem">📝</div>
+                        <p>No membership requests yet.</p>
+                    </div>
                 </c:when>
                 <c:otherwise>
                     <c:forEach var="item" items="${myRequests}">
@@ -78,14 +84,17 @@
                                 <div class="club-name">${club != null ? club.name : 'Unknown'}</div>
                                 <div class="req-meta">Requested ${req.formattedRequestDate}</div>
                             </div>
-                            <div style="display:flex;gap:.5rem;align-items:center;">
+                            <div style="display:flex;gap:.5rem;align-items:center">
                                 <span class="status-badge status-${req.status}">${req.status}</span>
                                 <c:if test="${req.status == 'pending'}">
-                                    <form action="${pageContext.request.contextPath}/app/cancelRequest" method="post" style="margin:0">
+                                    <form action="${pageContext.request.contextPath}/app/cancelRequest"
+                                          method="post" style="margin:0">
                                         <input type="hidden" name="requestId" value="${req.id}">
                                         <input type="hidden" name="clubId" value="${req.clubId}">
                                         <button type="submit" class="btn-danger btn-sm"
-                                                onclick="return confirm('Cancel this request?')">Cancel</button>
+                                                onclick="return confirm('Cancel this request?')">
+                                            Cancel
+                                        </button>
                                     </form>
                                 </c:if>
                             </div>
@@ -95,14 +104,21 @@
             </c:choose>
         </div>
 
-        <!-- Discover More Clubs Section -->
         <div class="dash-section full-width">
             <h2>🔍 Discover More Clubs</h2>
-            <p class="text-muted" style="margin-bottom:1rem;">Find clubs that match your interests.</p>
-            <a href="${pageContext.request.contextPath}/app/search" class="btn-gold">Browse All Clubs</a>
+            <p class="text-muted" style="margin-bottom:1.2rem">
+                Find clubs that match your interests and request to join them.
+            </p>
+            <a href="${pageContext.request.contextPath}/app/search" class="btn-gold">
+                Browse All Clubs
+            </a>
         </div>
 
     </div>
+</div>
+
+<div class="footer">
+    <strong>FindMyClub</strong> — San José State University · Student Organization Portal
 </div>
 
 </body>

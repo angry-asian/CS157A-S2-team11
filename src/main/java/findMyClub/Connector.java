@@ -184,37 +184,39 @@ public class Connector extends HttpServlet {
 
     private void handleViewClub(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
-
         String idStr = req.getParameter("id");
         if (idStr == null) {
-            resp.sendRedirect(req.getContextPath() + "/app/search");
-            return;
+            resp.sendRedirect(req.getContextPath() + "/app/search"); return;
         }
-
         Club club = ds.getClubById(Integer.parseInt(idStr));
         if (club == null) {
-            resp.sendRedirect(req.getContextPath() + "/app/search");
-            return;
+            resp.sendRedirect(req.getContextPath() + "/app/search"); return;
         }
 
-        req.setAttribute("club", club);
+        req.setAttribute("club",   club);
         req.setAttribute("leader", ds.getUserById(club.getLeaderId()));
 
         HttpSession session = req.getSession(false);
         if (session != null && session.getAttribute("userId") != null) {
             int userId = (int) session.getAttribute("userId");
 
+            // Get the most recent active request (pending first, then others)
             ds.getRequestsByStudent(userId).stream()
-                    .filter(r -> r.getClubId() == club.getId())
-                    .findFirst()
-                    .ifPresent(r -> req.setAttribute("myRequest", r));
+                .filter(r -> r.getClubId() == club.getId())
+                .sorted((a, b) -> {
+                    // pending requests come first
+                    if ("pending".equals(a.getStatus()) && !"pending".equals(b.getStatus())) return -1;
+                    if (!"pending".equals(a.getStatus()) && "pending".equals(b.getStatus())) return 1;
+                    return 0;
+                })
+                .findFirst()
+                .ifPresent(r -> req.setAttribute("myRequest", r));
 
             req.setAttribute("isMember", club.getMemberIds().contains(userId));
         }
 
         String msg = req.getParameter("msg");
         if (msg != null) req.setAttribute("flashMsg", msg);
-
         forward(req, resp, "/clubDetail.jsp");
     }
 
@@ -369,15 +371,28 @@ public class Connector extends HttpServlet {
 
     private void handleCancelRequest(HttpServletRequest req, HttpServletResponse resp)
             throws IOException, ServletException {
-
         if (!checkLogin(req, resp)) return;
 
+        String requestIdStr = req.getParameter("requestId");
+        String clubIdStr    = req.getParameter("clubId");
+
+        if (requestIdStr == null || requestIdStr.trim().isEmpty()) {
+            resp.sendRedirect(req.getContextPath() + "/app/studentDashboard");
+            return;
+        }
+
+        int requestId = Integer.parseInt(requestIdStr);
+        String userRole = (String) req.getSession().getAttribute("userRole");
+
+        if ("admin".equals(userRole)) {
+            ds.cancelRequestAsAdmin(requestId);
+            resp.sendRedirect(req.getContextPath() + "/app/adminDashboard?msg=cancelled");
+            return;
+        }
+
         int userId = (int) req.getSession().getAttribute("userId");
-        int requestId = Integer.parseInt(req.getParameter("requestId"));
-        int clubId = Integer.parseInt(req.getParameter("clubId"));
-
+        int clubId = Integer.parseInt(clubIdStr);
         ds.cancelRequest(requestId, userId);
-
         resp.sendRedirect(req.getContextPath() + "/app/club?id=" + clubId + "&msg=cancelled");
     }
 
