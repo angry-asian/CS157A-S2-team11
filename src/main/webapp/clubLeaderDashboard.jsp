@@ -10,7 +10,9 @@
 <body>
 
 <nav class="navbar">
-    <a class="nav-brand" href="${pageContext.request.contextPath}/app/search">Find<span>My</span>Club</a>
+    <a class="nav-brand" href="${pageContext.request.contextPath}/app/search">
+        Find<em>My</em>Club
+    </a>
     <div class="nav-links">
         <a href="${pageContext.request.contextPath}/app/search">Browse Clubs</a>
         <a href="${pageContext.request.contextPath}/app/messages">💬 Messages</a>
@@ -22,202 +24,95 @@
 
 <div class="dash-header">
     <h1>Club Leader Dashboard</h1>
-    <p>Manage your clubs, review membership requests, and update club information.</p>
+    <p>Manage your clubs, review requests, and keep your club info up to date.</p>
 </div>
 
 <div class="container">
-    <!-- Flash Messages -->
+
     <c:if test="${flashMsg == 'created'}">
-        <div class="alert alert-success mt-2">✅ Club created! Pending admin approval.</div>
+        <div class="alert alert-success">✅ Club created! Pending admin approval.</div>
     </c:if>
     <c:if test="${flashMsg == 'updated'}">
-        <div class="alert alert-success mt-2">✅ Club updated successfully.</div>
+        <div class="alert alert-success">✅ Club updated successfully.</div>
     </c:if>
     <c:if test="${flashMsg == 'approved'}">
-        <div class="alert alert-success mt-2">✅ Membership request approved.</div>
+        <div class="alert alert-success">✅ Membership request approved.</div>
     </c:if>
     <c:if test="${flashMsg == 'rejected'}">
-        <div class="alert alert-info mt-2">Request rejected.</div>
-    </c:if>
-    <c:if test="${flashMsg == 'eventCreated'}">
-        <div class="alert alert-success mt-2">✅ Event created.</div>
-    </c:if>
-    <c:if test="${flashMsg == 'eventUpdated'}">
-        <div class="alert alert-success mt-2">✅ Event updated.</div>
-    </c:if>
-    <c:if test="${flashMsg == 'eventDeleted'}">
-        <div class="alert alert-info mt-2">Event deleted.</div>
-    </c:if>
-    <c:if test="${flashMsg == 'eventDenied'}">
-        <div class="alert alert-danger mt-2">⚠ You can only manage events for clubs you lead.</div>
-    </c:if>
-    <c:if test="${flashMsg == 'eventBadInput'}">
-        <div class="alert alert-danger mt-2">⚠ Please fill in a title and a valid date/time.</div>
-    </c:if>
-    <c:if test="${flashMsg == 'eventConflict'}">
-        <div class="alert alert-danger mt-2">⚠ This club already has another event within an hour of that time. Pick a different slot.</div>
-    </c:if>
-    <c:if test="${flashMsg == 'memberRemoved'}">
-        <div class="alert alert-info mt-2">Member removed from club.</div>
-    </c:if>
-    <c:if test="${flashMsg == 'memberDenied'}">
-        <div class="alert alert-danger mt-2">⚠ Could not remove that member.</div>
-    </c:if>
-    <c:if test="${flashMsg == 'coLeaderAdded'}">
-        <div class="alert alert-success mt-2">✅ Co-leader added.</div>
-    </c:if>
-    <c:if test="${flashMsg == 'coLeaderRemoved'}">
-        <div class="alert alert-info mt-2">Co-leader removed.</div>
-    </c:if>
-    <c:if test="${flashMsg == 'coLeaderDenied'}">
-        <div class="alert alert-danger mt-2">⚠ Only the primary leader can manage co-leaders.</div>
-    </c:if>
-    <c:if test="${flashMsg == 'coLeaderBadInput'}">
-        <div class="alert alert-danger mt-2">⚠ Pick a club leader to add or remove.</div>
+        <div class="alert alert-info">Request rejected.</div>
     </c:if>
 
     <div class="dash-grid">
 
-        <!-- Clubs I Lead Section -->
         <div class="dash-section">
-            <h2>🏛 Clubs I Lead</h2>
+            <h2>🏛️ My Clubs</h2>
             <c:choose>
                 <c:when test="${empty myClubs}">
-                    <p class="text-muted">You haven't created any clubs yet.</p>
+                    <div style="text-align:center;padding:2rem 0;color:var(--gray-400)">
+                        <div style="font-size:2rem;margin-bottom:.5rem">🏛️</div>
+                        <p>You haven't created any clubs yet.</p>
+                    </div>
                 </c:when>
                 <c:otherwise>
-                    <c:forEach var="entry" items="${myClubsWithMembers}">
-                        <c:set var="club"               value="${entry.club}" />
-                        <c:set var="members"            value="${entry.members}" />
-                        <c:set var="coLeaders"          value="${entry.coLeaders}" />
-                        <c:set var="coLeaderCandidates" value="${entry.coLeaderCandidates}" />
-                        <c:set var="isPrimary"          value="${entry.isPrimary}" />
-                        <div class="request-row" style="flex-direction:column;align-items:stretch;gap:.5rem">
-                            <div style="display:flex;justify-content:space-between;align-items:center;gap:.6rem">
-                                <div class="request-info">
-                                    <div class="club-name">${club.name}</div>
-                                    <div class="req-meta">${club.category} · ${club.memberCount} member${club.memberCount == 1 ? '' : 's'}</div>
-                                </div>
-                                <div style="display:flex;gap:.4rem;align-items:center">
-                                    <span class="status-badge status-${club.status}">${club.status}</span>
-                                    <button type="button" class="btn-outline btn-sm"
-                                            data-club-id="${club.id}"
-                                            data-name="<c:out value='${club.name}'/>"
-                                            data-description="<c:out value='${club.description}'/>"
-                                            data-category="<c:out value='${club.category}'/>"
-                                            data-meeting-location="<c:out value='${club.meetingLocation}'/>"
-                                            data-meeting-time="<c:out value='${club.meetingTime}'/>"
-                                            data-comm="<c:out value='${club.communicationPlatform}'/>"
-                                            onclick="openEdit(this)">Edit</button>
-                                    <a href="${pageContext.request.contextPath}/app/club?id=${club.id}" class="btn-gold btn-sm">View</a>
-                                </div>
+                    <c:forEach var="club" items="${myClubs}">
+                        <div class="request-row">
+                            <div class="request-info">
+                                <div class="club-name">${club.name}</div>
+                                <div class="req-meta">${club.category} · ${club.memberCount} members</div>
                             </div>
-                            <details class="member-roster">
-                                <summary>👥 Members (${members.size()})</summary>
-                                <c:choose>
-                                    <c:when test="${empty members}">
-                                        <p class="text-muted" style="margin:.5rem 0 0">No members yet besides you.</p>
-                                    </c:when>
-                                    <c:otherwise>
-                                        <ul class="member-list">
-                                            <c:forEach var="m" items="${members}">
-                                                <li>
-                                                    <span>${m.name} <span class="text-muted">· ${m.email}</span></span>
-                                                    <form action="${pageContext.request.contextPath}/app/removeMember" method="post"
-                                                          onsubmit="return confirm('Remove ${m.name} from ${club.name}?')"
-                                                          style="margin:0">
-                                                        <input type="hidden" name="clubId"   value="${club.id}">
-                                                        <input type="hidden" name="memberId" value="${m.id}">
-                                                        <button type="submit" class="btn-danger btn-sm">Remove</button>
-                                                    </form>
-                                                </li>
-                                            </c:forEach>
-                                        </ul>
-                                    </c:otherwise>
-                                </c:choose>
-                            </details>
-
-                            <details class="member-roster">
-                                <summary>🤝 Co-leaders (${coLeaders.size()})</summary>
-                                <c:choose>
-                                    <c:when test="${empty coLeaders}">
-                                        <p class="text-muted" style="margin:.5rem 0 0">No co-leaders yet.</p>
-                                    </c:when>
-                                    <c:otherwise>
-                                        <ul class="member-list">
-                                            <c:forEach var="cl" items="${coLeaders}">
-                                                <li>
-                                                    <span>${cl.name} <span class="text-muted">· ${cl.email}</span></span>
-                                                    <c:if test="${isPrimary}">
-                                                        <form action="${pageContext.request.contextPath}/app/removeCoLeader" method="post"
-                                                              onsubmit="return confirm('Remove ${cl.name} as a co-leader of ${club.name}?')"
-                                                              style="margin:0">
-                                                            <input type="hidden" name="clubId"     value="${club.id}">
-                                                            <input type="hidden" name="coLeaderId" value="${cl.id}">
-                                                            <button type="submit" class="btn-danger btn-sm">Remove</button>
-                                                        </form>
-                                                    </c:if>
-                                                </li>
-                                            </c:forEach>
-                                        </ul>
-                                    </c:otherwise>
-                                </c:choose>
-
-                                <c:if test="${isPrimary and not empty coLeaderCandidates}">
-                                    <form action="${pageContext.request.contextPath}/app/addCoLeader" method="post"
-                                          style="display:flex;gap:.4rem;margin-top:.6rem;align-items:center">
-                                        <input type="hidden" name="clubId" value="${club.id}">
-                                        <select name="coLeaderId" required style="flex:1">
-                                            <option value="">Add co-leader…</option>
-                                            <c:forEach var="cand" items="${coLeaderCandidates}">
-                                                <option value="${cand.id}">${cand.name} (${cand.email})</option>
-                                            </c:forEach>
-                                        </select>
-                                        <button type="submit" class="btn-outline btn-sm">+ Add</button>
-                                    </form>
-                                </c:if>
-                                <c:if test="${not isPrimary}">
-                                    <p class="text-muted" style="margin:.5rem 0 0;font-size:.85rem">
-                                        Only the primary leader can add or remove co-leaders.
-                                    </p>
-                                </c:if>
-                            </details>
+                            <div style="display:flex;gap:.4rem;align-items:center">
+                                <span class="status-badge status-${club.status}">${club.status}</span>
+                                <button class="btn-outline btn-sm"
+                                        onclick="openEdit(${club.id},'${club.description}','${club.meetingLocation}','${club.meetingTime}','${club.communicationPlatform}')">
+                                    Edit
+                                </button>
+                                <a href="${pageContext.request.contextPath}/app/club?id=${club.id}"
+                                   class="btn-gold btn-sm">View</a>
+                            </div>
                         </div>
                     </c:forEach>
                 </c:otherwise>
             </c:choose>
         </div>
 
-        <!-- Pending Requests Section -->
         <div class="dash-section">
             <h2>📬 Pending Requests
                 <c:if test="${not empty pendingRequests}">
-                    <span style="background:var(--red);color:#fff;border-radius:20px;padding:.1rem .5rem;font-size:.75rem">${pendingRequests.size()}</span>
+                    <span style="background:var(--red);color:#fff;border-radius:20px;padding:.1rem .55rem;font-size:.72rem;font-family:'Inter',sans-serif">
+                        ${pendingRequests.size()}
+                    </span>
                 </c:if>
             </h2>
             <c:choose>
                 <c:when test="${empty pendingRequests}">
-                    <p class="text-muted">No pending requests.</p>
+                    <div style="text-align:center;padding:2rem 0;color:var(--gray-400)">
+                        <div style="font-size:2rem;margin-bottom:.5rem">📭</div>
+                        <p>No pending requests.</p>
+                    </div>
                 </c:when>
                 <c:otherwise>
                     <c:forEach var="item" items="${pendingRequests}">
-                        <c:set var="req" value="${item.request}" />
+                        <c:set var="req"     value="${item.request}" />
                         <c:set var="student" value="${item.student}" />
-                        <c:set var="club" value="${item.club}" />
-                        <div class="request-row" style="flex-direction:column;align-items:flex-start;gap:.5rem">
+                        <c:set var="club"    value="${item.club}" />
+                        <div class="request-row" style="flex-direction:column;align-items:flex-start;gap:.6rem">
                             <div>
                                 <div class="club-name">${student != null ? student.name : 'Unknown'}</div>
-                                <div class="req-meta">Wants to join <strong>${club.name}</strong> · ${req.formattedRequestDate}</div>
+                                <div class="req-meta">
+                                    Wants to join <strong>${club.name}</strong> · ${req.formattedRequestDate}
+                                </div>
                             </div>
                             <div style="display:flex;gap:.5rem">
-                                <form action="${pageContext.request.contextPath}/app/processRequest" method="post" style="margin:0">
+                                <form action="${pageContext.request.contextPath}/app/processRequest"
+                                      method="post" style="margin:0">
                                     <input type="hidden" name="requestId" value="${req.id}">
-                                    <input type="hidden" name="decision" value="approved">
+                                    <input type="hidden" name="decision"  value="approved">
                                     <button type="submit" class="btn-success btn-sm">✔ Approve</button>
                                 </form>
-                                <form action="${pageContext.request.contextPath}/app/processRequest" method="post" style="margin:0">
+                                <form action="${pageContext.request.contextPath}/app/processRequest"
+                                      method="post" style="margin:0">
                                     <input type="hidden" name="requestId" value="${req.id}">
-                                    <input type="hidden" name="decision" value="rejected">
+                                    <input type="hidden" name="decision"  value="rejected">
                                     <button type="submit" class="btn-danger btn-sm">✘ Reject</button>
                                 </form>
                             </div>
@@ -227,83 +122,8 @@
             </c:choose>
         </div>
 
-        <!-- Past Requests Section -->
-        <div class="dash-section">
-            <h2>📜 Request History
-                <c:if test="${not empty pastRequests}">
-                    <span style="background:var(--gray-300);color:#000;border-radius:20px;padding:.1rem .5rem;font-size:.75rem">${pastRequests.size()}</span>
-                </c:if>
-            </h2>
-            <c:choose>
-                <c:when test="${empty pastRequests}">
-                    <p class="text-muted">No past requests yet.</p>
-                </c:when>
-                <c:otherwise>
-                    <c:forEach var="item" items="${pastRequests}">
-                        <c:set var="req"     value="${item.request}" />
-                        <c:set var="student" value="${item.student}" />
-                        <c:set var="club"    value="${item.club}" />
-                        <div class="request-row">
-                            <div class="request-info">
-                                <div class="club-name">${student != null ? student.name : 'Unknown'}</div>
-                                <div class="req-meta">${club.name} · ${req.formattedRequestDate}</div>
-                            </div>
-                            <span class="status-badge status-${req.status}">${req.status}</span>
-                        </div>
-                    </c:forEach>
-                </c:otherwise>
-            </c:choose>
-        </div>
-
-        <!-- My Events Section -->
-        <div class="dash-section">
-            <h2>📅 My Events
-                <c:if test="${not empty myEvents}">
-                    <span style="background:var(--gray-300);color:#000;border-radius:20px;padding:.1rem .5rem;font-size:.75rem">${myEvents.size()}</span>
-                </c:if>
-            </h2>
-            <c:choose>
-                <c:when test="${empty myEvents}">
-                    <p class="text-muted">No events yet. Use the form below to create one.</p>
-                </c:when>
-                <c:otherwise>
-                    <c:forEach var="item" items="${myEvents}">
-                        <c:set var="event" value="${item.event}" />
-                        <c:set var="club"  value="${item.club}" />
-                        <div class="request-row" style="flex-direction:column;align-items:flex-start;gap:.5rem">
-                            <div class="request-info" style="width:100%">
-                                <div class="club-name">📌 ${event.title}</div>
-                                <div class="req-meta">${club.name} · 📅 ${event.formattedDate}</div>
-                                <div class="req-meta">📍 ${event.location}</div>
-                                <c:if test="${not empty event.description}">
-                                    <div class="req-meta" style="margin-top:.3rem">${event.description}</div>
-                                </c:if>
-                            </div>
-                            <div style="display:flex;gap:.4rem">
-                                <button type="button" class="btn-outline btn-sm"
-                                        data-event-id="${event.id}"
-                                        data-title="<c:out value='${event.title}'/>"
-                                        data-description="<c:out value='${event.description}'/>"
-                                        data-location="<c:out value='${event.location}'/>"
-                                        data-event-date="${event.inputDate}"
-                                        onclick="openEditEvent(this)">Edit</button>
-                                <form action="${pageContext.request.contextPath}/app/deleteEvent" method="post"
-                                      onsubmit="return confirm('Delete this event? This cannot be undone.')"
-                                      style="margin:0">
-                                    <input type="hidden" name="eventId" value="${event.id}">
-                                    <button type="submit" class="btn-danger btn-sm">Delete</button>
-                                </form>
-                            </div>
-                        </div>
-                    </c:forEach>
-                </c:otherwise>
-            </c:choose>
-        </div>
-
-        <!-- Request a New Club Section -->
         <div class="dash-section full-width">
-            <h2>➕ Request a New Club</h2>
-            <p class="text-muted" style="margin-bottom:.6rem">New clubs go to admin for approval before they appear in search.</p>
+            <h2>➕ Create New Club</h2>
             <form action="${pageContext.request.contextPath}/app/createClub" method="post"
                   style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
                 <div class="form-group">
@@ -341,147 +161,14 @@
             </form>
         </div>
 
-        <!-- Create Event Section -->
-        <div class="dash-section full-width">
-            <h2>➕ Create Event</h2>
-            <c:choose>
-                <c:when test="${empty myClubs}">
-                    <p class="text-muted">Create a club first — events have to be attached to a club you lead.</p>
-                </c:when>
-                <c:otherwise>
-                    <form action="${pageContext.request.contextPath}/app/createEvent" method="post"
-                          style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
-                        <div class="form-group">
-                            <label>Club *</label>
-                            <select name="clubId" required>
-                                <c:forEach var="club" items="${myClubs}">
-                                    <option value="${club.id}">${club.name}</option>
-                                </c:forEach>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Event Title *</label>
-                            <input type="text" name="title" placeholder="e.g. Spring Tournament" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Date &amp; Time *</label>
-                            <input type="datetime-local" name="eventDate" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Location</label>
-                            <input type="text" name="location" placeholder="e.g. Engineering Hall 210">
-                        </div>
-                        <div class="form-group" style="grid-column:1/-1">
-                            <label>Description</label>
-                            <textarea name="description" placeholder="Tell members what to expect…"></textarea>
-                        </div>
-                        <div style="grid-column:1/-1">
-                            <button type="submit" class="btn-gold">Create Event</button>
-                            <p class="text-muted mt-1">New events appear immediately on your club's page.</p>
-                        </div>
-                    </form>
-                </c:otherwise>
-            </c:choose>
-        </div>
-
-        <!-- Activity Log -->
-        <div class="dash-section full-width">
-            <h2>📜 Activity Log
-                <c:if test="${not empty activityLog}">
-                    <span style="background:var(--gray-300);color:#000;border-radius:20px;padding:.1rem .5rem;font-size:.75rem">${activityLog.size()}</span>
-                </c:if>
-            </h2>
-            <p class="text-muted" style="margin-bottom:.6rem">Your most recent actions across the system.</p>
-            <c:choose>
-                <c:when test="${empty activityLog}">
-                    <p class="text-muted">No activity yet.</p>
-                </c:when>
-                <c:otherwise>
-                    <ul class="member-list">
-                        <c:forEach var="entry" items="${activityLog}">
-                            <li>
-                                <span><strong>${entry.action}</strong> <span class="text-muted">· ${entry.details}</span></span>
-                                <span class="text-muted" style="font-size:.8rem">${entry.formattedDate}</span>
-                            </li>
-                        </c:forEach>
-                    </ul>
-                </c:otherwise>
-            </c:choose>
-        </div>
-
-        <!-- Other Club Leaders -->
-        <div class="dash-section full-width">
-            <h2>🤝 Other Club Leaders</h2>
-            <p class="text-muted" style="margin-bottom:.6rem">Reach out to coordinate events or share resources.</p>
-            <c:choose>
-                <c:when test="${empty otherLeaders}">
-                    <p class="text-muted">No other club leaders yet.</p>
-                </c:when>
-                <c:otherwise>
-                    <ul class="leader-list">
-                        <c:forEach var="ldr" items="${otherLeaders}">
-                            <li>
-                                <span><strong>${ldr.name}</strong> <span class="text-muted">· ${ldr.email}</span></span>
-                                <a class="btn-outline btn-sm"
-                                   href="${pageContext.request.contextPath}/app/messages?to=${ldr.id}">💬 Message</a>
-                            </li>
-                        </c:forEach>
-                    </ul>
-                </c:otherwise>
-            </c:choose>
-        </div>
-
     </div>
 </div>
 
-<!-- Edit Event Modal -->
-<div class="modal-overlay" id="editEventModal">
-    <div class="modal">
-        <h2>Edit Event</h2>
-        <form action="${pageContext.request.contextPath}/app/updateEvent" method="post">
-            <input type="hidden" name="eventId" id="editEventId">
-            <div class="form-group">
-                <label>Title</label>
-                <input type="text" name="title" id="editEventTitle" required>
-            </div>
-            <div class="form-group">
-                <label>Date &amp; Time</label>
-                <input type="datetime-local" name="eventDate" id="editEventDate" required>
-            </div>
-            <div class="form-group">
-                <label>Location</label>
-                <input type="text" name="location" id="editEventLocation">
-            </div>
-            <div class="form-group">
-                <label>Description</label>
-                <textarea name="description" id="editEventDesc"></textarea>
-            </div>
-            <div class="modal-actions">
-                <button type="button" class="btn-outline" onclick="closeEditEvent()">Cancel</button>
-                <button type="submit" class="btn-gold">Save Changes</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Edit Modal -->
 <div class="modal-overlay" id="editModal">
     <div class="modal">
         <h2>Edit Club Info</h2>
         <form action="${pageContext.request.contextPath}/app/updateClub" method="post">
             <input type="hidden" name="clubId" id="editId">
-            <div class="form-group">
-                <label>Club Name *</label>
-                <input type="text" name="name" id="editName" required>
-            </div>
-            <div class="form-group">
-                <label>Category</label>
-                <select name="category" id="editCategory">
-                    <c:forEach var="cat" items="${categories}">
-                        <option value="${cat}">${cat}</option>
-                    </c:forEach>
-                </select>
-            </div>
             <div class="form-group">
                 <label>Description</label>
                 <textarea name="description" id="editDesc"></textarea>
@@ -506,46 +193,24 @@
     </div>
 </div>
 
+<div class="footer">
+    <strong>FindMyClub</strong> — San José State University · Student Organization Portal
+</div>
+
 <script>
-function openEdit(btn) {
-    document.getElementById('editId').value   = btn.dataset.clubId;
-    document.getElementById('editName').value = btn.dataset.name;
-    document.getElementById('editDesc').value = btn.dataset.description;
-    document.getElementById('editLoc').value  = btn.dataset.meetingLocation;
-    document.getElementById('editTime').value = btn.dataset.meetingTime;
-    document.getElementById('editComm').value = btn.dataset.comm;
-    var catSel = document.getElementById('editCategory');
-    if (catSel) {
-        for (var i = 0; i < catSel.options.length; i++) {
-            catSel.options[i].selected = (catSel.options[i].value === btn.dataset.category);
-        }
-    }
+function openEdit(id, desc, loc, time, comm) {
+    document.getElementById('editId').value   = id;
+    document.getElementById('editDesc').value = desc;
+    document.getElementById('editLoc').value  = loc;
+    document.getElementById('editTime').value = time;
+    document.getElementById('editComm').value = comm;
     document.getElementById('editModal').classList.add('open');
 }
-
 function closeEdit() {
     document.getElementById('editModal').classList.remove('open');
 }
-
 document.getElementById('editModal').addEventListener('click', function(e) {
     if (e.target === this) closeEdit();
-});
-
-function openEditEvent(btn) {
-    document.getElementById('editEventId').value       = btn.dataset.eventId;
-    document.getElementById('editEventTitle').value    = btn.dataset.title;
-    document.getElementById('editEventDate').value     = btn.dataset.eventDate;
-    document.getElementById('editEventLocation').value = btn.dataset.location;
-    document.getElementById('editEventDesc').value     = btn.dataset.description;
-    document.getElementById('editEventModal').classList.add('open');
-}
-
-function closeEditEvent() {
-    document.getElementById('editEventModal').classList.remove('open');
-}
-
-document.getElementById('editEventModal').addEventListener('click', function(e) {
-    if (e.target === this) closeEditEvent();
 });
 </script>
 
