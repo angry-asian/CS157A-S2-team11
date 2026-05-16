@@ -7,8 +7,10 @@
     <link rel="stylesheet" href="${pageContext.request.contextPath}/style/styling.css">
 </head>
 <body>
+
 <div class="auth-wrapper">
     <div class="auth-card">
+
         <div class="auth-logo">Find<em>My</em>Club</div>
         <p class="auth-school">San José State University</p>
 
@@ -16,85 +18,86 @@
             <div class="alert alert-danger">${error}</div>
         <% } %>
 
-<<<<<<< Updated upstream
-            <form action="${pageContext.request.contextPath}/app/register" method="post">
-                <div class="form-group">
-                    <label>First Name</label>
-                    <input type="text" name="firstName" placeholder="Jane" required>
-                </div>
-
-                <div class="form-group">
-                    <label>Last Name</label>
-                    <input type="text" name="lastName" placeholder="Smith" required>
-                </div>
-
-                <div class="form-group">
-                    <label>University Email 
-                        <span style="color: var(--gray-500); font-weight: 400;">(must be .edu)</span>
-                    </label>
-                    <input type="email" name="email" placeholder="yourname@university.edu" required>
-                </div>
-
-                <div class="form-group">
-                    <label>I am a…</label>
-                    <select name="role" required>
-                        <option value="student">Student</option>
-                        <option value="clubLeader">Club Leader</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Password 
-                        <span style="color: var(--gray-500); font-weight: 400;">(min 6 characters)</span>
-                    </label>
-                    <input type="password" name="password" placeholder="Create a password" required minlength="6">
-                </div>
-
-                <div class="form-group">
-                    <label>Confirm Password</label>
-                    <input type="password" name="confirmPassword" placeholder="Re-enter your password" required>
-                </div>
-
-                <button type="submit" class="btn-primary">Create Account</button>
-            </form>
-
-            <div class="auth-switch">
-                Already have an account? 
-                <a href="${pageContext.request.contextPath}/app/login">Sign in</a>
-=======
         <form action="${pageContext.request.contextPath}/app/register" method="post">
+
             <div class="form-group">
-                <label>Full Name</label>
-                <input type="text" name="name" placeholder="Jane Smith" required>
->>>>>>> Stashed changes
+                <label>First Name</label>
+                <input type="text"
+                       name="firstName"
+                       placeholder="Jane"
+                       required>
             </div>
+
             <div class="form-group">
-                <label>SJSU Email <span style="color:var(--gray-400);font-weight:400;text-transform:none">(must be @sjsu.edu)</span></label>
-                <input type="email" name="email" placeholder="yourname@sjsu.edu" required>
+                <label>Last Name</label>
+                <input type="text"
+                       name="lastName"
+                       placeholder="Smith"
+                       required>
             </div>
+
+            <div class="form-group">
+                <label>
+                    University Email
+                    <span style="color: var(--gray-500); font-weight: 400;">
+                        (must be .edu)
+                    </span>
+                </label>
+
+                <input type="email"
+                       name="email"
+                       placeholder="yourname@university.edu"
+                       required>
+            </div>
+
             <div class="form-group">
                 <label>I am a…</label>
+
                 <select name="role" required>
                     <option value="student">Student</option>
                     <option value="clubLeader">Club Leader</option>
                 </select>
             </div>
+
             <div class="form-group">
-                <label>Password <span style="color:var(--gray-400);font-weight:400;text-transform:none">(min 6 characters)</span></label>
-                <input type="password" name="password" placeholder="Create a password" required minlength="6">
+                <label>
+                    Password
+                    <span style="color: var(--gray-500); font-weight: 400;">
+                        (min 6 characters)
+                    </span>
+                </label>
+
+                <input type="password"
+                       name="password"
+                       placeholder="Create a password"
+                       minlength="6"
+                       required>
             </div>
+
             <div class="form-group">
                 <label>Confirm Password</label>
-                <input type="password" name="confirmPassword" placeholder="Re-enter your password" required>
+
+                <input type="password"
+                       name="confirmPassword"
+                       placeholder="Re-enter your password"
+                       required>
             </div>
-            <button type="submit" class="btn-primary">Create Account</button>
+
+            <button type="submit" class="btn-primary">
+                Create Account
+            </button>
+
         </form>
 
         <div class="auth-switch">
             Already have an account?
-            <a href="${pageContext.request.contextPath}/app/login">Sign in</a>
+            <a href="${pageContext.request.contextPath}/app/login">
+                Sign in
+            </a>
         </div>
+
     </div>
 </div>
+
 </body>
 </html>
